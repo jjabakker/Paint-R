@@ -1,0 +1,76 @@
+---
+title: "ROI processing from graphpad"
+output: html_document
+date: "2024-10-09"
+---
+
+```{r setup, include=FALSE}
+library(ggplot2)
+library(dplyr)
+library(RColorBrewer)
+library(tidyverse)
+
+
+```
+
+## Squares label for WT figure
+
+
+```{r echo=FALSE, fig.fullwidth=TRUE, fig.height=10, fig.width=24}
+
+#read BMDC mannose cluster density
+
+
+# Load necessary libraries
+library(readxl)
+library(dplyr)
+library(tidyr)
+
+# Specify the file path
+file_path <- "/Users/kas_steuten/Library/CloudStorage/OneDrive-UniversiteitLeiden/PhD biosyn/Experiments BIO/Results files PPT, Xls and Prism/mannose paper/Draft manuscript figures/prism files Hans thesis for presi/new density/BMDC - Mannoce Cluster - Density - Cluster by Cluster - No Empty Columns (Threshold 5).xlsx"  # Replace with your actual file path
+
+
+# Step 1: Read the Excel file
+# Replace "your_file.xlsx" with the path to your actual file
+
+raw_data <- read_excel(file_path)
+
+# Clean up column names
+colnames(raw_data) <- make.names(colnames(raw_data), unique = TRUE)  # Make names syntactically valid and unique
+
+# View the cleaned column names
+colnames(raw_data)
+
+# Reshape the data to long format
+long_data <- raw_data %>%
+  pivot_longer(
+    cols = everything(),  # Exclude the first column (usually the group identifier)
+    names_to = c("Group", "Statistic"),  # Create two variables: Group and Statistic
+    names_sep = "\\."  # Split names by the period if your data uses it (adjust if needed)
+  )
+
+# View the reshaped data
+head(long_data)
+
+
+# Import the Excel file, reading the first two rows separately
+header1 <- read_excel(file_path, range = "A1:Z1")  # Adjust range as needed
+header2 <- read_excel(file_path, range = "A2:Z2")  # Adjust range as needed
+
+# Combine the headers into a single vector
+combined_headers <- make.names(paste(header1, header2, sep = "_"), unique = TRUE)
+
+# Import the main data, skipping the first two rows
+data <- read_excel("datafile.xlsx", skip = 2)  # Skip the first two rows
+
+# Assign the new combined headers to the data
+colnames(data) <- combined_headers
+
+# View the first few rows of the imported data
+head(data)
+
+
+
+
+
+```

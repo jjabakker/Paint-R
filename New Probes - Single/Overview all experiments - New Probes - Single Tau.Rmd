@@ -1,0 +1,511 @@
+---
+title: "Overview of all experiment - New Probes"
+subtitle: 'Overview all experiments - New Probes.Rmd'
+fontfamily: sans
+output:
+  pdf_document:
+    toc: yes
+    toc_depth: 3
+  html_document: default
+  word_document: default
+---
+
+```{r Libraries, echo=FALSE, warning=FALSE, message=FALSE}
+
+library(tidyverse)
+library(readxl)
+library(knitr)
+library(ggsignif)
+library(gridExtra)
+library(kableExtra)
+
+options(digits=2)
+
+```
+
+
+```{r Source, echo=FALSE, message=FALSE}
+
+# Read in data
+
+source('../Utility Code/Read Data - New Probes - Single.R')
+source('../Utility Code/Colours.r')
+
+```
+
+
+
+```{r , echo=FALSE}
+
+data_file_new_30_02 <- '../../Data Integrated/Paint New Probes - 30 squares - 2 DR'
+data_file_new_30_05 <- '../../Data Integrated/Paint New Probes - 30 squares - 5 DR'
+data_file_new_30_10 <- '../../Data Integrated/Paint New Probes - 30 squares - 10 DR'
+data_file_new_30_30 <- '../../Data Integrated/Paint New Probes - 30 squares - 30 DR'
+
+data_file_new_20_02 <- '../../Data Integrated/Paint New Probes - 20 squares - 2 DR'
+data_file_new_20_05 <- '../../Data Integrated/Paint New Probes - 20 squares - 5 DR'
+data_file_new_20_10 <- '../../Data Integrated/Paint New Probes - 20 squares - 10 DR'
+data_file_new_20_30 <- '../../Data Integrated/Paint New Probes - 20 squares - 30 DR'
+
+
+data_file <- data_file_new_30_10   # Original
+data_file <- data_file_new_20_10
+manually_exclude <- FALSE
+duration_exclude <- TRUE
+
+```
+
+
+```{r , echo=FALSE}
+
+data <- read_data(data_file, 'Output', manually_exclude=manually_exclude, duration_exclude=duration_exclude)
+
+squares_master <- data$squares_master
+images_master  <- data$images_master
+
+```
+
+
+
+\newpage
+
+# Summary
+
+## All Cell Types, Probe Types and Adjuvants, ignoring Concentration and Threshold
+
+```{r, Overview 1, echo = FALSE, message=FALSE}
+
+experiment_overview <- squares_master %>% 
+  group_by(Cell_Type, Adjuvant, Probe,  ) %>% 
+  summarise(Nr_Exps    = n_distinct(Experiment_Name), 
+            Nr_Images  = n_distinct(Recording_Name), 
+            Nr_Squares = n(), 
+            .groups = 'keep') 
+
+experiment_overview$Squares_Images_Ratio <- round(experiment_overview$Nr_Squares / experiment_overview$Nr_Images, digits = 0)
+
+kable(experiment_overview, col.names = c('C Type',
+                                         'Adj',
+                                         'Probe',
+                                         'Nr Exp',
+                                         'Nr Imgs',
+                                         'Nr Sqs',
+                                         'Sqs/Imgs')) 
+# write_csv(experiment_overview, '~/Downloads/Thesis Experiments - Summary - Ignoring Concentration and Threshold.csv')
+
+```
+
+\newpage
+
+## All Cell Types, Probe Types and Adjuvants, separate Concentration and Threshold 
+
+
+```{r, Overview 2, echo=FALSE, message=FALSE, error=FALSE}
+experiment_overview <- squares_master %>% 
+  group_by(Cell_Type, Probe_Type, Probe, Adjuvant, Concentration, Threshold) %>% 
+  summarise(Nr_Exps              = n_distinct(Experiment_Name), 
+            Nr_Images            = n_distinct(Recording_Name), 
+            Nr_Squares           = n(), 
+            Squares_Images_Ratio = n(),
+            .groups              = 'keep') 
+
+experiment_overview$Squares_Images_Ratio <- round(experiment_overview$Nr_Squares / experiment_overview$Nr_Images, digits = 0)
+
+kable(experiment_overview, col.names = c('CT',
+                                         'PT',
+                                         'Probe',
+                                         'Adj',
+                                         'Conc',
+                                         'Thresh',
+                                         'Nr Exp',
+                                         'Nr Imgs',
+                                         'Nr Sqs',
+                                         'Sqs/Imgs'))
+# write_csv(experiment_overview, '~/Downloads/Thesis Experiments - Summary - Separate Concentration and Threshold.csv')
+
+```
+
+\newpage
+
+## Experiments with unusual thresholds (> 20)
+
+```{r, echo = FALSE, eval=FALSE, message=FALSE}
+
+images_master %>% 
+  select(Experiment_Date, Experiment_Nr, Experiment_Seq_Nr, Cell_Type, Adjuvant, Probe_Type, Probe, Threshold, Nr_Visible_Squares) %>%
+  filter(Threshold > 20) %>% 
+  kable(col.names = c('Experiment Date',
+                      'Exp Nr',
+                      'Exp Seq Nr',
+                      'Cell Type',
+                      'Adjuvant',
+                      'Probe Type',
+                      'Probe Name',
+                      'Threshold',
+                      'Nr Visible Squares'))
+```
+
+
+
+\newpage
+
+## Experiments where no visible square is present
+
+```{r, no_visible_squares, echo = FALSE, message=FALSE}
+
+images_master %>% 
+  select(Experiment_Date, Experiment_Nr, Experiment_Seq_Nr, Cell_Type, Adjuvant, Probe_Type, Probe, Nr_Visible_Squares) %>%
+  filter(Nr_Visible_Squares == 0) %>% 
+  select(-Nr_Visible_Squares) %>% 
+  kable(col.names = c('Experiment Date',
+                      'Exp Nr',
+                      'Exp Seq Nr',
+                      'Cell Type',
+                      'Adjuvant',
+                      'Probe Type',
+                      'Probe Name'))
+```
+
+\newpage
+
+## Experiments that were excluded
+
+```{r, rejected, echo = FALSE, message=FALSE}
+
+images_master %>% 
+  select(Experiment_Date, Experiment_Nr, Experiment_Seq_Nr, Cell_Type, Probe_Type, Probe, Exclude) %>%
+  filter(Exclude == TRUE) %>% 
+  select(-Exclude) %>% 
+  kable(col.names = c('Experiment Date',
+                      'Exp Nr',
+                      'Exp Seq Nr',
+                      'Cell Type',
+                      'Probe Type',
+                      'Probe Name'))
+
+
+```
+
+
+\newpage
+
+## Concentrations at which experiments have been done
+
+```{r, echo = FALSE, message = FALSE}
+squares_master %>% 
+
+  group_by(Cell_Type, Probe_Type, Concentration) %>% 
+  summarise(Nr_Squares=n(), .groups = 'keep') %>% 
+  kable(col.names = c('Cell Type',
+                      'Probe Type',
+                      'Concentration',
+                      'Nr of Squares'))
+```
+
+
+\newpage
+
+## Thresholds at which experiments have been done - Number Squares
+
+```{r, echo = FALSE, message = FALSE}
+bar_data <- squares_master %>% 
+  group_by(Cell_Type, Adjuvant, Probe_Type, Threshold) %>% 
+  summarise(Nr_Squares=n(), .groups = 'keep') 
+
+
+bar_data%>% 
+  kable(col.names = c('Cell Type',
+                      'Adjuvant',
+                      'Probe Type',
+                      'Threshold',
+                      'Nr of Squares'))
+```
+
+\newpage
+
+## Thresholds at which experiments have been done - Number Images
+
+```{r, echo = FALSE, message = FALSE}
+bar_data <- images_master %>% 
+  group_by(Cell_Type, Adjuvant, Probe_Type, Threshold) %>% 
+  summarise(Nr_Images=n(), .groups = 'keep') 
+
+
+bar_data%>% 
+  kable(col.names = c('Cell Type',
+                      'Adjuvant',
+                      'Probe Type',
+                      'Threshold',
+                      'Nr of Images'))
+```
+
+
+\newpage
+
+## Threshold distribution'
+
+```{r, echo=FALSE, message=FALSE, error=FALSE}
+
+bar_data$Threshold <- as.factor(bar_data$Threshold )
+bar_data %>% 
+  ggplot() +
+    geom_col(aes(x=Cell_Type, y=Nr_Images, fill=Threshold, group=Threshold), 
+             width=0.5,
+             position = position_dodge2(preserve = 'single')) +
+    geom_text(aes(x     = Cell_Type, 
+                  y     = Nr_Images, 
+                  label = Nr_Images, 
+                  group = Threshold),
+              position = position_dodge(width = 0.5),
+              vjust = -0.5, 
+              size = 2) 
+```
+
+
+\newpage
+
+## Experiments for specified Cell Type and Thresholds at which experiments have been done - Number Images
+
+```{r, echo = FALSE, message = FALSE}
+
+bar_data   <- images_master %>% 
+  group_by(Experiment_Date, Cell_Type, Probe_Type, Threshold) %>% 
+  summarise(Nr_Images=n(), .groups = 'keep') 
+
+
+bar_data%>% 
+  kable(col.names = c('Experiment Date',
+                      'Cell Type',
+                      'Probe Type',
+                      'Threshold',
+                      'Nr of Images'))
+```
+
+\newpage
+
+# Tau 
+
+
+## Tau for Cell Type, Probe Type and Probe, ignoring differences in Concentration and Threshold 
+
+
+```{r, echo=FALSE, message=FALSE, error=FALSE}
+experiment_overview <- images_master %>% 
+  filter(Tau > 0) %>% 
+  # filter(Adjuvant == 'None') %>% 
+  group_by(Cell_Type, Adjuvant, Probe_Type, Probe) %>% 
+  summarise(Nr_Exps        = n_distinct(Experiment_Name), 
+            Nr_Images      = n_distinct(Recording_Name), 
+            Median_Tau     = round(median(Tau), 0),
+            .groups = 'keep') 
+
+
+kable(experiment_overview, col.names = c('CT',
+                                         'Adj',
+                                         'PT',
+                                         'Probe',
+                                         'NrExp',
+                                         'NrImgs',
+                                         'Tau'))
+
+# write_csv(experiment_overview, '~/Downloads/Thesis Experiments - Tau and Density - Ignoring Concentration and Threshold.csv')
+```
+
+\newpage
+
+
+## Tau of probes without Adjuvant
+
+```{r echo=FALSE, fig.fullwidth=TRUE, fig.height=8, fig.width=12}
+
+
+tau_data <- images_master  %>% 
+  filter(Cell_Type=='BMDM') %>% 
+  filter(Tau > 0)
+
+meds <- tau_data %>% 
+  group_by(Cell_Type, Probe_Type, Probe, Adjuvant) %>%
+  summarize(med = round(median(Tau), 0), .groups = 'keep')
+
+ggplot(data=tau_data, aes(x=Probe, y = Tau)) + 
+  geom_boxplot(width = 0.5, show.legend = FALSE) +
+  geom_jitter(width=0.2) +
+  geom_text(data = meds, aes(y = med, label = round(med, 2)), size = 3, vjust = -0.5, color = "black") +
+  geom_text(aes(label=paste0("n = ", after_stat(count))), y = 0, stat = 'count', colour = "black", size = 3) +  
+  labs(x = '', 
+       y = 'Average residence time (ms)',
+       caption = '') +
+  scale_y_continuous(limits = c(0, 350), breaks=seq(0, 3500, 100)) +
+  theme_light(base_size = 16) +
+  theme(panel.border = element_blank(), panel.grid.minor = element_blank(), axis.line = element_line(colour = "black")) +
+    facet_wrap(Cell_Type ~ Adjuvant, drop = TRUE)
+```
+
+
+\newpage
+
+## Tau of probes with LPS
+
+```{r echo=FALSE, fig.fullwidth=TRUE, fig.height=8, fig.width=12}
+
+
+tau_data <- images_master  %>% 
+  filter(Adjuvant=='LPS') %>% 
+  filter(Tau > 0)
+
+meds <- tau_data %>% 
+  group_by(Probe, Cell_Type) %>%
+  summarize(med = round(median(Tau), 0), .groups = 'keep')
+
+tau_data %>%
+  ggplot(aes(x=Probe, y = Tau)) + 
+    #geom_violin(width = 0.9, show.legend = FALSE, trim = TRUE, scale='width') +
+    geom_boxplot(width = 0.5, show.legend = FALSE) +
+    geom_jitter(width=0.2) +
+    geom_text(data = meds, aes(y = med, label = round(med, 2)), size = 3, vjust = -0.5, color = "black") +
+    geom_text(aes(label=paste0("n = ", after_stat(count))), y = 0, stat = 'count', colour = "black", size = 3) +  
+    labs(x = '', 
+         y = 'Average residence time (ms)',
+         caption = '') +
+    scale_y_continuous(limits = c(0, 350), breaks=seq(0, 3500, 100)) +
+    theme_light(base_size = 16) +
+    theme(panel.border = element_blank(), panel.grid.minor = element_blank(), axis.line = element_line(colour = "black")) +
+      facet_wrap( ~ Cell_Type, drop = TRUE)
+
+```
+
+\newpage
+
+## Tau of probes with IL-4
+
+```{r echo=FALSE, fig.fullwidth=TRUE, fig.height=8, fig.width=12}
+
+
+tau_data <- images_master  %>% 
+  filter(Adjuvant=='IL-4') %>% 
+  filter(Tau > 0)
+
+meds <- tau_data %>% 
+  group_by(Probe, Cell_Type) %>%
+  summarize(med = round(median(Tau), 0), .groups = 'keep')
+
+tau_data %>%
+  ggplot(aes(x=Probe, y = Tau)) + 
+    #geom_violin(width = 0.9, show.legend = FALSE, trim = TRUE, scale='width') +
+    geom_boxplot(width = 0.5, show.legend = FALSE) +
+    geom_jitter(width=0.2) +
+    geom_text(data = meds, aes(y = med, label = round(med, 2)), size = 3, vjust = -0.5, color = "black") +
+    geom_text(aes(label=paste0("n = ", after_stat(count))), y = 0, stat = 'count', colour = "black", size = 3) +  
+    labs(x = '', 
+         y = 'Average residence time (ms)',
+         caption = '') +
+    scale_y_continuous(limits = c(0, 350), breaks=seq(0, 3500, 100)) +
+    theme_light(base_size = 16) +
+    theme(panel.border = element_blank(), panel.grid.minor = element_blank(), axis.line = element_line(colour = "black")) +
+      facet_wrap( ~ Cell_Type, drop = TRUE)
+
+```
+
+
+\newpage
+
+## Tau of probes on BMDM
+
+```{r echo=FALSE, fig.fullwidth=TRUE, fig.height=8, fig.width=12}
+
+
+tau_data <- images_master  %>% 
+  filter(Cell_Type=='BMDM') %>% 
+  filter(Tau > 0)
+
+meds <- tau_data %>% 
+  group_by(Probe, Cell_Type, Adjuvant) %>%
+  summarize(med = round(median(Density), 0), .groups = 'keep')
+
+tau_data %>%
+  ggplot(aes(x=Probe, y = Density)) + 
+    #geom_violin(width = 0.9, show.legend = FALSE, trim = TRUE, scale='width') +
+    geom_boxplot(width = 0.5, show.legend = FALSE) +
+    geom_jitter(width=0.2) +
+    geom_text(data = meds, aes(y = med, label = round(med, 2)), size = 3, vjust = -0.5, color = "black") +
+    geom_text(aes(label=paste0("n = ", after_stat(count))), y = 0, stat = 'count', colour = "black", size = 3) +  
+    labs(x = '', 
+         y = 'Average residence time (ms)',
+         caption = '') +
+    scale_y_continuous(limits = c(0, 50), breaks=seq(0, 3500, 100)) +
+    theme_light(base_size = 16) +
+    theme(panel.border = element_blank(), panel.grid.minor = element_blank(), axis.line = element_line(colour = "black")) +
+      facet_wrap( ~ Adjuvant, drop = TRUE)
+
+```
+\newpage
+
+# Density
+
+## Density for Cell Type, Probe Type and Probe, ignoring differences in Concentration and Threshold 
+
+
+```{r, echo=FALSE, message=FALSE, error=FALSE}
+
+experiment_overview <- squares_master %>% 
+  group_by(Cell_Type, Probe_Type, Adjuvant, Probe, ) %>% 
+  summarise(Nr_Exps              = n_distinct(Experiment_Name), 
+            Nr_Images            = n_distinct(Recording_Name), 
+            Nr_Squares           = n(),
+            Squares_Images_Ratio = n(),
+            Median_Density       = round(median(Density), 1),
+            .groups = 'keep') 
+
+experiment_overview$Squares_Images_Ratio <- round(experiment_overview$Nr_Squares / experiment_overview$Nr_Images, digits = 0)
+
+kable(experiment_overview, col.names = c('CT',
+                                         'PT',
+                                         'Adj',
+                                         'Probe',
+                                         'NrExp',
+                                         'NrImgs',
+                                         'NrSqs',
+                                         'Sqs/Imgs',
+                                         'Density')) 
+
+# write_csv(experiment_overview, '~/Downloads/Thesis Experiments - Tau and Density - Ignoring Concentration and Threshold.csv')
+```
+
+
+\newpage
+
+## Density for Cell Type, Probe Type, Probe, Concentration and Threshold  
+
+
+```{r, Overview 4, echo=FALSE, message=FALSE, error=FALSE}
+experiment_overview <- squares_master %>% 
+  group_by(Cell_Type, Probe_Type, Probe, Adjuvant, Concentration, Threshold) %>% 
+  summarise(Nr_Exps        = n_distinct(Experiment_Name), 
+            Nr_Images      = n_distinct(Recording_Name), 
+            Nr_Squares     = n(),
+            Squares_Images_Ratio = n(),
+            Median_Density = round(median(Density), 0),
+            .groups = 'keep') 
+
+experiment_overview$Squares_Images_Ratio <- round(experiment_overview$Nr_Squares / experiment_overview$Nr_Images, digits = 0)
+
+kable(experiment_overview, col.names = c('CT',
+                                         'PT',
+                                         'Probe',
+                                         'Adj',
+                                         'Conc',
+                                         'Thresh',
+                                         'NrExp',
+                                         'NrImgs',
+                                         'NrSqs',
+                                         'Sqs/Imgs',
+                                         'Density')) %>% 
+  column_spec(4, width ="8em")
+
+
+# write_csv(experiment_overview, '~/Downloads/Thesis Experiments - Tau and Density - Separate Concentration and Threshold.csv')
+```
+
+
+
+

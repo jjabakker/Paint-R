@@ -1,0 +1,424 @@
+---
+title: "Tau of Epitope probes on CHO-MR and BMDC"
+subtitle: 'CHO-MR and BMDC - Epitope.Rmd'
+fontfamily: sans
+output:
+  pdf_document:
+    toc: yes
+    toc_depth: 3
+  html_document: default
+  word_document: default
+---
+
+```{r Libraries, echo=FALSE, warning=FALSE, message=FALSE}
+
+library(tidyverse)
+library(readxl)
+library(knitr)
+library(ggsignif)
+library(gridExtra)
+library(ggtext)
+
+```
+
+
+```{r Source, echo=FALSE, message=FALSE}
+
+source('../Utility Code/Read Data - Regular Probes - Traditional.R')
+source('../Utility Code/Colours.r')
+source('../Utility Code/Significance.R')
+
+```
+
+```{r , echo=FALSE}
+
+data_file_regular_20_02 <- '../../Data Integrated/Paint Regular Probes - 20 squares - 2 DR'
+data_file_regular_20_05 <- '../../Data Integrated/Paint Regular Probes - 20 squares - 5 DR'
+data_file_regular_20_10 <- '../../Data Integrated/Paint Regular Probes - 20 squares - 10 DR'
+data_file_regular_20_30 <- '../../Data Integrated/Paint Regular Probes - 20 squares - 30 DR'
+
+data_file_regular_30_02 <- '../../Data Integrated/Paint Regular Probes - 30 squares - 2 DR'
+data_file_regular_30_05 <- '../../Data Integrated/Paint Regular Probes - 30 squares - 5 DR'
+data_file_regular_30_10 <- '../../Data Integrated/Paint Regular Probes - 30 squares - 10 DR'
+data_file_regular_30_30 <- '../../Data Integrated/Paint Regular Probes - 30 squares - 30 DR'
+
+data_file <- data_file_regular_20_02
+manually_exclude <- FALSE
+duration_exclude <- TRUE
+
+```
+
+
+```{r , echo=FALSE}
+
+data <- read_data(data_file, 'Output', manually_exclude=manually_exclude, duration_exclude=duration_exclude)
+
+squares_master <- data$squares_master
+images_master  <- data$images_master
+
+```
+
+
+\newpage
+
+# Tau of Epitope probes on CHO-MR and BMDC
+
+Description of the figure:
+
+* Cell types:         CHO-MR and BMDC
+* Probe type:         Epitope
+* Adjuvant:           None
+
+For Tau it is ok to take all concentrations and all quality threshold values
+
+\hfill\break
+\hfill\break
+
+
+```{r echo=FALSE}
+generate_labels <- function(label_names, label_numbers) {
+  # Check that label_names and label_numbers are of the same length
+  if (length(label_names) != length(label_numbers)) {
+    stop("label_names and label_numbers must have the same length.")
+  }
+  
+  # Create formatted labels with bold numbers
+  formatted_labels <- paste0(label_names, "(<b>", label_numbers, "</b>)")
+  
+  return(formatted_labels)
+}
+
+# Define the label names and corresponding numbers
+label_names <- c('1 Mono', '2 Mono', '6 Mono', '1 Tri', '2 Tri', '6 Tri', 'Control')
+label_numbers <- c(1, 2, 3, 4, 5, 6, 7)
+
+# Generate the labels
+formatted_labels <- generate_labels(label_names, label_numbers)
+
+```
+
+```{r echo=FALSE, tau_significance_violin}
+
+generate_tau_plot <- function(tau_table, y_limit) {
+  
+  # Check if the tau_table has the required columns
+  required_columns <- c("Probe", "Cell_Type", "Probe_Type", "Structure", "Tau")
+  if (!all(required_columns %in% colnames(tau_table))) {
+    stop("tau_table must contain the following columns: Probe, Cell_Type, Probe_Type, Structure, and Tau.")
+  }
+  
+  # Create the significance table
+  significance_tau <- create_tau_significance_table(tau_table)
+  
+  # Specify which pairs of probes to compare
+  signif <- list(c('1 Mono', '2 Mono'),
+                 c('2 Mono', '6 Mono'),
+                 c('1 Mono', '6 Mono'),
+                 c('1 Tri', '2 Tri'),
+                 c('2 Tri', '6 Tri'),
+                 c('1 Tri', '6 Tri'))
+
+  
+  # Retrieve the significance values for these pairs
+  signif_value <- sapply(signif, function(x) get_significance(significance_tau, x[1], x[2]))
+  
+  # Change to significance levels with stars
+  signif_num = as.numeric(signif_value)
+  for (i in 1:length(signif_value)) { 
+    if (signif_num[i] > 0.05) {
+      signif_value[i] = 'NS'
+    } else if (signif_num[i] > 0.01) {
+      signif_value[i] = '*'
+    }
+    else if (signif_num[i] > 0.001) {
+      signif_value[i] = '**'
+    }
+    else if (signif_num[i] > 0.0001) {
+       signif_value[i] = '***'
+    }
+    else {
+      signif_value[i] = '****'
+    }  
+  }
+
+  # Calculate median values for each group
+  meds <- tau_table %>% 
+    group_by(Probe, Cell_Type, Probe_Type, Structure) %>%
+    summarize(med = round(median(Tau), 0), .groups = 'keep')
+
+  # Define text size
+  basesize <- 8
+
+  # Generate the plot
+  plot_data <- ggplot(tau_table, aes(x = Probe, y = Tau, fill = Structure)) + 
+    geom_violin(width = 0.9, show.legend = FALSE, trim = TRUE, scale = 'width') +
+    geom_signif(comparisons = signif, annotations = signif_value, 
+                y_position = 450, step_increase = 0.1, textsize = 3) +
+    geom_text(data = meds, aes(y = med, label = med), 
+              size = 4, vjust = -0.5, color = "black") +
+    geom_text(aes(label = paste0("n = ", after_stat(count))), 
+              y = -8, stat = 'count', color = "black", size = 3) + 
+    labs(x = '', 
+         y = 'Average residence time (ms)',
+         caption = '') +
+    scale_y_continuous(limits = c(-10, y_limit), breaks = seq(0, y_limit, 200)) +
+    scale_fill_manual(values = c(green_mono, green_tri, green_control)) +
+    theme_light(base_size = basesize) +
+    theme(panel.border = element_blank(), 
+          panel.grid.minor = element_blank(), 
+          axis.line = element_line(colour = "black")) +
+    theme(text = element_text(size = basesize), 
+          axis.text = element_text(size = basesize), 
+          axis.title = element_text(size = basesize))
+
+  return(plot_data)
+}
+
+```
+
+
+\newpage
+
+# Figure 4d - Tau CHO-MR - Epitope - None
+
+```{r echo=FALSE, fig.fullwidth=TRUE, fig.width=6, fig.height=4 }
+
+# ----------------------------------------------------------------------------
+# For Tau it is ok to take all concentrations and all quality threshold values
+# ----------------------------------------------------------------------------
+
+# Generate the CHO-MR plot 
+tau_table <- squares_master  %>% 
+  filter(Cell_Type  == 'CHOMR',
+         Probe_Type == 'Epitope',
+         Adjuvant   == 'None')
+p_cho <- generate_tau_plot (tau_table, 800)
+
+p_cho +
+  scale_x_discrete(labels = formatted_labels) +
+  theme(axis.text.x = element_markdown(size = 9))
+
+ggsave("./Figures/Traditional/Figure 4d.png", width = 6, height=4)
+
+```
+
+
+\newpage
+
+# Figure 4e - Tau BMDC - Epitope - None
+
+```{r echo=FALSE, fig.fullwidth=TRUE, fig.width=6, fig.height=4}
+# Generate the BMDC plot 
+tau_table <- squares_master  %>% 
+  filter(Cell_Type  == 'BMDC',
+         Probe_Type == 'Epitope',
+         Adjuvant   == 'None')
+p_bmdc <- generate_tau_plot (tau_table, 800)
+
+p_bmdc +
+  scale_x_discrete(labels = formatted_labels) +
+  theme(axis.text.x = element_markdown(size = 9))
+
+ggsave("./Figures/Traditional/Figure 4e.png", width=6, height=4)
+
+```
+
+
+
+
+\newpage
+
+# Figure 4f  - Density CHO-MR, Epitope, Concentration 5, Threshold 5
+
+
+```{r echo=FALSE, fig.fullwidth=TRUE, fig.width=6, fig.height=4 }
+
+density_table <- squares_master%>% 
+  filter(Cell_Type     == 'CHOMR',
+         Probe_Type    == 'Epitope',
+         Concentration == 5,
+         Adjuvant      == 'None',
+         Threshold     == 5)
+
+y_max         <- 120
+y_ticks       <- 20
+
+# Create the significance table
+significance_cho_epitope_5 <- create_density_significance_table(density_table)
+
+# Specify which pairs of probes to compare
+signif <- list(c('1 Mono', '2 Mono'),
+               c('2 Mono', '6 Mono'),
+               c('1 Mono', '6 Mono'),
+               c('1 Tri', '2 Tri'),
+               c('2 Tri', '6 Tri'),
+               c('1 Tri', '6 Tri'))
+
+# Retrieve the significance values for these pairs
+signif_value <- sapply(signif, function(x) get_significance(significance_cho_epitope_5, x[1], x[2]))
+
+# Change to significance levels with stars
+signif_num = as.numeric(signif_value)
+for (i in 1:length(signif_value)) { 
+  if (signif_num[i] > 0.05) {
+    signif_value[i] = 'NS'
+  } else if (signif_num[i] > 0.01) {
+    signif_value[i] = '*'
+  }
+  else if (signif_num[i] > 0.001) {
+    signif_value[i] = '**'
+  }
+  else if (signif_num[i] > 0.0001) {
+     signif_value[i] = '***'
+  }
+  else {
+    signif_value[i] = '****'
+  }  
+}
+
+
+meds <- density_table %>% 
+  group_by(Probe, Cell_Type, Probe_Type, Structure) %>%
+  summarize(med = round(median(Density), 1), .groups = 'keep')
+
+cho_mr_density <- density_table %>%
+  ggplot(aes(x=Probe, y = Density, fill = Structure)) +
+    geom_violin(width = 0.9, show.legend = FALSE, trim = TRUE, scale='width') +
+    geom_signif(comparisons = signif, annotations = signif_value, y_position = 65, step_increase = 0.2, textsize = 3) +
+    geom_text(data = meds, aes(y = med, label = round(med, 1)), size = 3, vjust = -0.5, color = "black") +
+    geom_text(aes(label=paste0("n = ", after_stat(count))), y = -2, stat = 'count', colour = "black", size = 3) +
+    labs(x = '',
+         y = expression(events  / microm^2  /  sec (x1000))) +
+    scale_y_continuous(limits = c(0, y_max), breaks=seq(0, y_max, y_ticks)) +
+    scale_fill_manual(values=c(green_mono,
+                               green_tri,
+                               green_control)) +
+    theme_light(base_size = 12) +
+    theme(panel.border = element_blank(), panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
+
+
+cho_mr_density +
+  scale_x_discrete(labels = formatted_labels) +
+  theme(axis.text.x = element_markdown(size = 9))
+
+
+ggsave("./Figures/Traditional/Figure 4f.png", width = 6, height=4)
+
+```
+
+
+
+
+\newpage
+
+
+# Figure 4g - Density BMDC, Epitope, Concentration 10, Threshold 10
+
+
+```{r echo=FALSE, fig.fullwidth=TRUE, fig.width=6, fig.height=4, }
+
+density_table <- squares_master      %>% 
+  filter(Cell_Type     == 'BMDC')    %>% 
+  filter(Probe_Type    == 'Epitope') %>% 
+  filter(Concentration == 10)        %>%
+  filter(Adjuvant      == 'None')    %>% 
+  filter(Threshold     == 10)
+
+y_max         <- 70
+y_ticks       <- 20
+
+# Create the significance table
+significance_bmdc_epitope_10 <- create_density_significance_table(density_table)
+
+# Specify which pairs of probes to compare
+signif <- list(c('1 Mono', '2 Mono'),
+               c('2 Mono', '6 Mono'),
+               c('1 Mono', '6 Mono'),
+               c('1 Tri', '2 Tri'),
+               c('2 Tri', '6 Tri'),
+               c('1 Tri', '6 Tri'))
+
+# Retrieve the significance values for these pairs
+signif_value <- sapply(signif, function(x) get_significance(significance_bmdc_epitope_10, x[1], x[2]))
+
+# Change to significance levels with stars
+signif_num = as.numeric(signif_value)
+for (i in 1:length(signif_value)) { 
+  if (signif_num[i] > 0.05) {
+    signif_value[i] = 'NS'
+  } else if (signif_num[i] > 0.01) {
+    signif_value[i] = '*'
+  }
+  else if (signif_num[i] > 0.001) {
+    signif_value[i] = '**'
+  }
+  else if (signif_num[i] > 0.0001) {
+     signif_value[i] = '***'
+  }
+  else {
+    signif_value[i] = '****'
+  }  
+}
+
+meds <- density_table %>% 
+  group_by(Probe, Cell_Type, Probe_Type, Structure) %>%
+  summarize(med = round(median(Density), 1), .groups = 'keep')
+
+bmdc_density <- density_table %>%
+  ggplot(aes(x=Probe, y = Density, fill = Structure)) +
+    geom_violin(width = 0.9, show.legend = FALSE, trim = TRUE, scale='width') +
+    geom_signif(comparisons = signif, annotations = signif_value, y_position = 35, step_increase = 0.2) +
+    geom_text(data = meds, aes(y = med, label = round(med, 1)), size = 3, vjust = -0.5, color = "black") +
+    geom_text(aes(label=paste0("n = ", after_stat(count))), y = -1, stat = 'count', colour = "black", size = 3) +
+    labs(x = '',
+         y = expression(events  / microm^2  /  sec (x1000))) +
+    scale_y_continuous(limits = c(0, y_max), breaks=seq(0, y_max, y_ticks)) +
+    scale_fill_manual(values=c(green_mono,
+                               green_tri,
+                               green_control)) +
+    theme_light(base_size = 12) +
+    theme(panel.border = element_blank(), panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
+
+
+bmdc_density  + 
+  scale_x_discrete(labels = formatted_labels) +
+  theme(axis.text.x = element_markdown(size = 9))
+
+ggsave("./Figures/Traditional/Figure 4g.png", width = 6, height=4)
+```
+
+\newpage
+
+# Figure ?? - Accepted squares
+
+
+
+```{r, echo=FALSE, message=FALSE, fig.width=10, fig.height=6, fig.fullwidth=TRUE}
+
+squares_master %>% 
+  filter(Cell_Type %in% c('BMDC', 'MR-')) %>% 
+  filter(Probe_Type == 'Simple') %>%
+  filter(Adjuvant == 'None') %>% 
+  filter(Structure %in% c('Mono', 'Tri')) %>%   
+  filter(Probe %in% c('6 Mono', '1 Tri', '6 Tri')) %>% 
+  ggplot(aes(x=Probe, fill= Structure)) +
+    geom_bar() +
+    geom_text(aes(label=sprintf('%d', after_stat(count))),
+              stat ='count',
+              nudge_y = 10,
+              size= 6) +
+    labs(title='', x='', y = 'Nr of accepted squares') +
+    labs(caption='') +
+    theme_light(base_size = 20) +
+    theme(legend.position = "none") +
+    #scale_y_continuous(limits=c(0, 50), breaks=seq(0, 50, 10)) +
+    scale_fill_manual(values=c(green_mono,
+                               green_tri,
+                               green_control)) +
+    facet_wrap(~ Cell_Type) 
+
+ggsave("./Figures/Traditional/Figure 4c.png", width = 12, height=8)
+
+```
+
+

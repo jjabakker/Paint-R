@@ -1,0 +1,684 @@
+
+---
+title: "Overview of all experiment"
+subtitle: 'Overview all experiments.Rmd'
+fontfamily: sans
+output:
+  pdf_document:
+    toc: yes
+    toc_depth: 3
+  html_document: default
+  word_document: default
+---
+
+```{r Libraries, echo=FALSE, warning=FALSE, message=FALSE}
+
+library(tidyverse)
+library(readxl)
+library(knitr)
+library(ggsignif)
+library(gridExtra)
+library(kableExtra)
+library(ggpmisc)
+
+options(digits=2)
+
+```
+
+
+```{r Source, echo=FALSE, message=FALSE}
+
+# Read in data
+
+source('../Utility Code/Read Data - Regular Probes - Traditional.r')
+source('../Utility Code/Colours.r')
+source('../Utility Code/Significance.r')
+
+```
+
+```{r , echo=FALSE}
+
+data_file_regular_20_02 <- '../../Data Integrated - v2/Paint Regular Probes - 20 squares - 2 DR'
+data_file_regular_20_05 <- '../../Data Integrated - v2/Paint Regular Probes - 20 squares - 5 DR'
+data_file_regular_20_10 <- '../../Data Integrated - v2/Paint Regular Probes - 20 squares - 10 DR'
+data_file_regular_20_30 <- '../../Data Integrated - v2/Paint Regular Probes - 20 squares - 30 DR'
+
+data_file_regular_30_02 <- '../../Data/Paint Regular Probes - 30 squares - 2 DR'
+data_file_regular_30_05 <- '../../Data Integrated - v2/Paint Regular Probes - 30 squares - 5 DR'
+data_file_regular_30_10 <- '../../Data Integrated - v2/Paint Regular Probes - 30 squares - 10 DR'
+data_file_regular_30_30 <- '../../Data Integrated - v2/Paint Regular Probes - 30 squares - 30 DR'
+
+
+data_file <- data_file_regular_30_02
+manually_exclude <- FALSE
+duration_exclude <- TRUE
+
+```
+
+```{r , echo=FALSE}
+
+
+data <- read_data(data_file, 'Output', manually_exclude=manually_exclude, duration_exclude=duration_exclude)
+
+squares_master <- data$squares_master
+images_master  <- data$images_master
+
+
+
+selection <- squares_master %>% 
+  filter(Cell_Type   == 'CHOMR') %>% 
+  filter(Probe_Type  == 'Epitope') %>%
+  filter(Experiment_Date  == '240814')%>%
+  filter(Adjuvant  == 'None')
+
+```
+
+
+\newpage
+
+
+# Scatter plot of residence time vs density
+
+```{r, echo=FALSE, fig.width=10, fig.height=4,}
+
+tau_data <- squares_master %>% 
+  filter(Cell_Type   == 'BMDC') %>% 
+  filter(Probe_Type  == 'Epitope') %>%
+  filter(Experiment_Date %in% c('240731', '240807'))%>%
+  filter(Probe %in% c('1 Mono','2 Mono', '6 Mono', '1 Tri','2 Tri', '6 Tri','Control')) 
+textsize = 8
+tau_data %>%
+  ggplot(mapping = aes(x=Tau, y=Density)) +
+    geom_point(size = 0.0001) +
+    labs(x='Average residence time (ms)', 
+         y='Relative on-rate (events/µm/sec)') +
+  theme_light(base_size = 13) +
+  scale_x_continuous(limits = c(0, 410), breaks = seq(0, 400, by = 200)) +
+  scale_y_continuous(limits = c(0, 35), breaks = seq(0, 35, by =10)) +
+    facet_grid(Adjuvant ~ Probe, drop=TRUE) +
+    theme(strip.text = element_text(size = textsize),
+          axis.text = element_text(size = textsize))
+ggsave("../../Figures/Traditional/Figure 5a.png", width = 10, height=4)
+
+```
+
+#For CHO-MR versus BMDC
+
+```{r, echo=FALSE, fig.width=10, fig.height=4,}
+
+tau_data <- squares_master %>% 
+  filter(Cell_Type %in% c('BMDC', "CHOMR")) %>% 
+  filter(Probe_Type  == 'Epitope') %>%
+  filter(Probe %in% c('1 Mono','2 Mono', '6 Mono', '1 Tri','2 Tri', '6 Tri','Control'))
+textsize = 8
+tau_data %>%
+  ggplot(mapping = aes(x=Tau, y=Density)) +
+    geom_point(size = 0.0001) +
+    labs(x='Average residence time (ms)', 
+         y='Relative on-rate (events/µm/sec)') +
+  theme_light(base_size = 13) +
+  scale_x_continuous(limits = c(0, 410), breaks = seq(0, 400, by = 200)) +
+    facet_grid(Cell_Type ~ Probe, drop=TRUE) +
+    theme(strip.text = element_text(size = textsize),
+          axis.text = element_text(size = textsize))
+ggsave("../../Figures/Traditional/Figure 5d.png", width = 10, height=4)
+
+```
+
+
+```{r, echo=FALSE, fig.width=4, fig.height=2}
+
+tau_data <- squares_master %>% 
+  filter(Cell_Type %in% c('CHOMR')) %>% 
+  filter(Threshold == 5 ) %>% 
+  filter(Concentration == 1)%>%
+  filter(Probe_Type  == 'Simple') %>%
+  filter(Adjuvant == 'None')%>%
+  filter(Probe %in% c('1 Tri', '6 Tri'))
+textsize = 9
+tau_data %>%
+  ggplot(mapping = aes(x=Tau, y=Density)) +
+    geom_point(size = 0.0001) +
+    labs(x= expression(1/k[off] * " (ms)"), 
+         y=expression( k[on] * " (evts/µm"^2 * "/sec)")) +
+  theme_light(base_size = 9) +
+  scale_x_continuous(limits = c(0, 410), breaks = seq(0, 400, by = 200)) +
+  scale_y_continuous(limits = c(0, 300), breaks = seq(0, 300, by = 100)) +
+    facet_grid( ~ Probe, drop=TRUE) +
+    theme(strip.text = element_text(size = textsize),
+          axis.text = element_text(size = textsize))
+ggsave("../../Figures/Traditional/Figure 2hj.png", width = 4, height=2)
+
+```
+```{r, echo=FALSE, fig.width=4, fig.height=2}
+
+tau_data <- squares_master %>% 
+  filter(Cell_Type %in% c('BMDC')) %>% 
+  filter(Threshold == 10 ) %>% 
+  #filter(Concentration == 10)%>%
+  filter(Probe_Type  == 'Simple') %>%
+  filter(Adjuvant == 'None')%>%
+  filter(Probe %in% c('1 Tri', '6 Tri'))
+textsize = 9
+tau_data %>%
+  ggplot(mapping = aes(x=Tau, y=Density)) +
+    geom_point(size = 0.0001) +
+     labs(x= expression(1/k[off] * " (ms)"), 
+         y=expression( k[on] * " (evts/µm"^2 * "/sec)")) +
+  theme_light(base_size = 9) +
+  scale_x_continuous(limits = c(0, 410), breaks = seq(0, 400, by = 200)) +
+  scale_y_continuous(limits = c(0, 50), breaks = seq(0, 300, by = 10)) +
+    facet_grid( ~ Probe, drop=TRUE) +
+    theme(strip.text = element_text(size = textsize),
+          axis.text = element_text(size = textsize))
+ggsave("../../Figures/Traditional/Figure 2LM.png", width = 4, height=2)
+
+```
+\newpage
+
+# Correlations table
+
+```{r, echo=FALSE, fig.width=8, fig.height=8}
+
+
+meds_comb <- function(data, probe_type, cell_type, adjuvant) {
+  meds <- data %>%
+    filter(Probe_Type == probe_type,
+           Probe %in% c('1 Mono', '2 Mono', '6 Mono', '1 Tri', '2 Tri', '6 Tri', 'Control'),
+           Cell_Type == cell_type,
+           #Experiment_Date %in% c('240731', '240807'),
+           Adjuvant == adjuvant) %>%
+    group_by(Probe) %>%
+    summarise(tau = median(Tau),
+              density = median(Density),
+              total_track_duration = sum(Total_Track_Duration),   # Median Total_Track_Duration
+              avg_long_track_duration = median(Average_Long_Track_Duration))  # Median Average_Long_Track_Duration
+  
+  return(meds)
+}
+
+# Create a table with the Tau, Density, Total_Track_Duration, and Average_Long_Track_Duration for different condition combinations
+combinations <- list(
+  meds_comb(squares_master, 'Epitope', 'CHOMR', 'None'),
+  meds_comb(squares_master, 'Epitope', 'BMDC',  'None'),
+  meds_comb(squares_master, 'Epitope', 'CHOMR', 'CytD'),
+  meds_comb(squares_master, 'Epitope', 'BMDC',  'CytD'),
+  meds_comb(squares_master, 'Simple',  'CHOMR', 'None'),
+  meds_comb(squares_master, 'Simple',  'BMDC',  'None')
+)
+
+# Merge the combinations into a single tibble
+correlation_data <- reduce(combinations, left_join, by = 'Probe')
+
+# Rename the columns to reflect the conditions, including the new medians
+colnames(correlation_data) <- c('Probe', 
+                                'Tau_E_CHOMR_None', 'Density_E_CHOMR_None', 'TotalTrack_E_CHOMR_None', 'AvgLongTrack_E_CHOMR_None',
+                                'Tau_E_BMDC_None',  'Density_E_BMDC_None',  'TotalTrack_E_BMDC_None',  'AvgLongTrack_E_BMDC_None',
+                                'Tau_E_CHOMR_CytD', 'Density_E_CHOMR_CytD', 'TotalTrack_E_CHOMR_CytD', 'AvgLongTrack_E_CHOMR_CytD',
+                                'Tau_E_BMDC_CytD',  'Density_E_BMDC_CytD',  'TotalTrack_E_BMDC_CytD',  'AvgLongTrack_E_BMDC_CytD',
+                                'Tau_S_CHOMR_None', 'Density_S_CHOMR_None', 'TotalTrack_S_CHOMR_None', 'AvgLongTrack_S_CHOMR_None',
+                                'Tau_S_BMDC_None',  'Density_S_BMDC_None',  'TotalTrack_S_BMDC_None',  'AvgLongTrack_S_BMDC_None')
+
+# Remove the combinations list to free up memory
+rm(combinations)
+
+
+
+# Add mean cycle for WT + MPLA and phagocytic index in BMDC and Kd derived SPR of simple glycans from Riera et al. SI
+
+correlation_data <- correlation_data %>%
+  mutate (mean_cycle = c(2.46, 1.97, 1.62, 1.72, 0.98, 0.39, 2.69),
+          PI         = c(0.02494,	0.2383,	0.2811,	0.515,	0.7052,	0.3092,	0.01214),
+          KdSPR      = c(100, 0 , 5.87, 4.62, 2.68, 3.14, 0 ))
+
+#kable(correlation_data) %>% 
+ # kable_styling(full_width = F) %>%
+  #row_spec(0, angle = -90)
+
+```
+
+
+```{r, echo=FALSE, fig.width=6, fig.height=6}
+# Epitope CHOMR vs BMDC none
+
+# Simple vs Epitope for all probes except control
+p1 <- correlation_data %>%
+  filter(Probe != 'Control') %>%
+  ggplot(mapping = aes(x=Tau_S_CHOMR_None, y=Tau_E_CHOMR_None)) +
+    geom_point() +
+    geom_text(aes(label = Probe), vjust = 0, nudge_y = 0.5) +
+    scale_x_continuous(limits = c(40, 150), breaks = seq(0, 150, by = 25)) +
+    scale_y_continuous(limits = c(40, 150), breaks = seq(0, 150, by = 25)) +
+    geom_smooth(method = "lm", formula = y ~ x) +
+    stat_poly_eq(aes(label = paste(after_stat(rr.label))), formula = y ~ x)
+
+p1a <- correlation_data %>%
+  filter(Probe != 'Control') %>%
+  ggplot(mapping = aes(x=Density_S_CHOMR_None, y=Density_E_CHOMR_None)) +
+    geom_point() +
+    geom_text(aes(label = Probe), vjust = 0, nudge_y = 0.5) +
+    #scale_x_continuous(limits = c(40, 150), breaks = seq(0, 150, by = 25)) +
+    #scale_y_continuous(limits = c(40, 150), breaks = seq(0, 150, by = 25)) +
+    geom_smooth(method = "lm", formula = y ~ x) +
+    stat_poly_eq(aes(label = paste(after_stat(rr.label))), formula = y ~ x)
+
+# Mean cycle vs KdSPR for all probes without control
+p2 <- correlation_data %>%
+  filter(Probe %in% c('1 Mono', '6 Mono', '1 Tri','2 Tri', '6 Tri')) %>% 
+  ggplot(mapping = aes(x=mean_cycle, y=KdSPR)) +
+    geom_point() +
+    geom_text(aes(label=Probe), 
+              nudge_x = c( 0,   0,   0,   0,   0,   0.1, 0.2),
+              nudge_y = c(-0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1)) +
+    scale_x_continuous(limits = c(-.5, 3.5), breaks = seq(-0.5, 3.5, by = 0.5)) +
+    scale_y_continuous(limits = c(0, 100), breaks = seq(0, 100, by = 25)) +
+    geom_smooth(method = "lm", formula = y ~ x, color='red', fill='mistyrose') +
+    stat_poly_eq(aes(label = paste(after_stat(rr.label))), 
+                 label.x = 'left',
+                 formula = y ~ x, 
+                 color='red') 
+
+
+# Mean cycle vs epitope tau CHOMR all probes
+p3 <- correlation_data %>%
+  ggplot(mapping = aes(x=mean_cycle, y=TotalTrack_E_BMDC_None)) +
+    geom_point() +
+    geom_text(aes(label=Probe), vjust = 0, nudge_y = 0.1) +
+    #scale_y_continuous(limits = c(40, 100), breaks = seq(0, 150, by = 25)) +
+    #scale_x_continuous(limits = c(-1, 3.5), breaks = seq(-1, 3.5, by = 1)) +
+    geom_smooth(method = "lm", formula = y ~ x) +
+    geom_smooth(data=correlation_data, method = "lm", formula = y ~ x, color='red', fill='mistyrose') +
+    stat_poly_eq(aes(label = paste(after_stat(rr.label))), 
+                 label.x = 'left',
+                 formula = y ~ x, 
+                 color='red')
+
+
+# PI vs mean cycle, all probes
+p4 <-correlation_data %>% 
+  ggplot(mapping = aes(x=PI, y=mean_cycle)) +
+    geom_point() +
+    geom_text(mapping=aes(label=Probe), vjust = 0, nudge_y = 0.1) +
+    geom_smooth(data=correlation_data, method = "lm", formula = y ~ x, color='red', fill='mistyrose') +
+    stat_poly_eq(aes(label = paste(after_stat(rr.label))), 
+                 label.x = 'left',
+                 formula = y ~ x, 
+                 color='red') +
+    scale_x_continuous(limits = c(-.5, 1.5), breaks = seq(-0.5, 1.5, by = 0.5)) +
+    scale_y_continuous(limits = c(-0, 3.5), breaks = seq(-1, 3.5, by = 1)) 
+    
+
+# BMDC Tau vs CHO-MR Tau (both with CytD)
+p5 <- correlation_data %>%
+  ggplot(mapping = aes(x=Tau_E_BMDC_CytD, y=Tau_E_CHOMR_CytD)) +
+    geom_point() +
+    geom_text(aes(label = Probe), vjust = 0, nudge_y = 0.5) +
+    scale_x_continuous(limits = c(40, 150), breaks = seq(0, 150, by = 25)) +
+    scale_y_continuous(limits = c(40, 150), breaks = seq(0, 150, by = 25)) +
+    geom_smooth(method = "lm", formula = y ~ x) +
+    stat_poly_eq(aes(label = paste(after_stat(rr.label))), formula = y ~ x)
+
+# BMDC Tau vs CHO-MR Tau (both without adjuvant)
+p6 <- correlation_data %>%
+  ggplot(mapping = aes(x=Tau_E_BMDC_None, y=Tau_E_CHOMR_None)) +
+    geom_point() +
+    geom_text(aes(label = Probe), vjust = 0, nudge_y = 0.5) +
+    scale_x_continuous(limits = c(40, 150), breaks = seq(0, 150, by = 25)) +
+    scale_y_continuous(limits = c(40, 150), breaks = seq(0, 150, by = 25)) +
+    geom_smooth(method = "lm", formula = y ~ x) +
+    stat_poly_eq(aes(label = paste(after_stat(rr.label))), formula = y ~ x)
+
+```
+
+
+\newpage
+
+# Correlation grid
+
+```{r, echo=FALSE, fig.width=6, fig.height=9}
+
+grid.arrange(p1, p2, p3, p4, p5, p6, ncol = 2)
+
+```
+
+```{r, echo=FALSE, fig.width=3, fig.height=2}
+
+p4 + labs(x = 'Phagocytic Index (MFI)', y = 'Mean Cycles') + theme_light(base_size = 8)
+ggsave("../../Figures/traditional/Figure 2b.png", width = 3, height=2)
+```
+
+```{r, echo=FALSE, fig.width=3, fig.height=2}
+
+p2 + 
+  xlab(expression(K[D]~(µM)~"derived from SPR")) + 
+labs(y = 'Mean cycles (MFI)') + theme_light(base_size = 8)
+ggsave("../../Figures/traditional/Figure 2spr.png", width = 3, height=2)
+```
+# Correlation between simple and epitope for CHO-MR
+
+```{r, echo=FALSE, fig.width=3, fig.height=3}
+
+p1 + labs(x = 'Glycocluster residence time (ms)', y = 'SLP glycocluster residence time (ms)') + theme_light(base_size = 9)
+ggsave("../../Figures/traditional/Figure xb.png", width = 3, height=3)
+```
+```{r, echo=FALSE, fig.width=3, fig.height=3}
+
+p1a + labs(x = 'Glycocluster residence time (ms)', y = 'SLP glycocluster residence time (ms)') + theme_light(base_size = 9)
+ggsave("../../Figures/traditional/Figure xc.png", width = 3, height=3)
+```
+\newpage
+
+# Correlation of Tau's of Epitope probes on CHO-MR and BMDC without Adjuvant
+
+
+
+\newpage
+
+# Correlation of Tau's on Epitope and Simple probes on CHO-MR without Adjuvant
+
+
+
+
+\newpage
+
+# Correlation of Phagocytic Index (on BMDC) with Epitope probe on CHO-MR witjout adjuvan
+
+
+\newpage
+
+# Correlation of Mean Cycle and PI
+
+
+```{r, echo=FALSE, fig.width=8, fig.height=4}
+# Correlations between mean_cycle with glycoPAINT derived Tau and Density in presence of CytD. Blue without and red is with CytD in one graph. 
+
+
+#rescued from CHAT
+#Density E CHOMR none vs CytD
+x_data <- "Density_E_BMDC_CytD"
+x2_data <- "Density_E_BMDC_None"
+y_data <- "mean_cycle"
+
+correlation_data_2Tri <- correlation_data %>% 
+  filter(Probe != '2 Tri')
+correlation_data_Control <- correlation_data %>% 
+  filter(Probe != 'Control')
+
+# Use the .data pronoun to reference the column names dynamically inside aes()
+pCytD_density <- correlation_data %>%
+  ggplot() +
+  # Red points and regression for the first x_data (Density_E_CHOMR_CytD)
+  geom_point(mapping = aes(x = .data[[x_data]], y = .data[[y_data]], shape = Probe), colour = 'red') + 
+  geom_smooth(mapping = aes(x = .data[[x_data]], y = .data[[y_data]]), method = "lm", 
+              formula = y ~ x, color = 'red', fill = 'mistyrose') +
+  stat_poly_eq(mapping = aes(x = .data[[x_data]], y = .data[[y_data]], 
+                             label = paste(after_stat(rr.label))), 
+               label.x = 'right',
+               formula = y ~ x, 
+               color = 'red') +
+  
+  # Blue points and regression for the second x2_data (Density_E_CHOMR_None)
+  geom_point(mapping = aes(x = .data[[x2_data]], y = .data[[y_data]], shape = Probe), color = 'blue') + 
+  geom_smooth(mapping = aes(x = .data[[x2_data]], y = .data[[y_data]]), method = "lm", 
+              formula = y ~ x, color = 'blue', fill = 'lightblue') +
+  stat_poly_eq(mapping = aes(x = .data[[x2_data]], y = .data[[y_data]], 
+                             label = paste(after_stat(rr.label))), 
+               label.x = 'left',
+               formula = y ~ x, 
+               color = 'blue') +
+  
+  # Remove legend for color
+  theme(legend.position = "none") +
+  scale_shape_manual(name = "Probe", values = c(0, 1, 2, 3, 4, 5, 6, 7)) +
+  
+  scale_x_continuous(limits = c(0, 10), breaks = seq(0, 20, by = 5)) +
+  #scale_x_continuous(limits = c(40, 150), breaks = seq(0, 150, by = 25))+
+  scale_y_continuous(limits = c(-0.5, 3.5), breaks = seq(-0.5, 3.5, by = 0.5)) +
+  labs(y = 'T cell proliferation (MFI)', x = 'Density (evts/um/s)')
+   
+
+#Tau E CHOMR none vs CytD     
+x_data <- "Tau_E_BMDC_CytD"
+x2_data <- "Tau_E_BMDC_None"
+y_data <- "mean_cycle"
+
+correlation_data_2Tri <- correlation_data %>% 
+  filter(Probe != '2 Tri')
+correlation_data_Control <- correlation_data %>% 
+  filter(Probe != 'Control')
+
+# Use the .data pronoun to reference the column names dynamically inside aes()
+pCytD_tau <- correlation_data %>%
+  ggplot() +
+  # Red points and regression for the first x_data (Density_E_CHOMR_CytD)
+  geom_point(mapping = aes(x = .data[[x_data]], y = .data[[y_data]], shape = Probe), colour = 'red') + 
+  geom_smooth(mapping = aes(x = .data[[x_data]], y = .data[[y_data]]), method = "lm", 
+              formula = y ~ x, color = 'red', fill = 'mistyrose') +
+  stat_poly_eq(mapping = aes(x = .data[[x_data]], y = .data[[y_data]], 
+                             label = paste(after_stat(rr.label))), 
+               label.x = 'right',
+               formula = y ~ x, 
+               color = 'red') +
+  
+  # Blue points and regression for the second x2_data (Density_E_CHOMR_None)
+  geom_point(mapping = aes(x = .data[[x2_data]], y = .data[[y_data]], shape = Probe), color = 'blue') + 
+  geom_smooth(mapping = aes(x = .data[[x2_data]], y = .data[[y_data]]), method = "lm", 
+              formula = y ~ x, color = 'blue', fill = 'lightblue') +
+  stat_poly_eq(mapping = aes(x = .data[[x2_data]], y = .data[[y_data]], 
+                             label = paste(after_stat(rr.label))), 
+               label.x = 'left',
+               formula = y ~ x, 
+               color = 'blue') +
+  
+  scale_shape_manual(name = "Probe", values = c(0, 1, 2, 3, 4, 5, 6, 7)) +
+  
+  theme(legend.position = "none") +
+
+  #scale_x_continuous(limits = c(0, 20), breaks = seq(0, 20, by = 5)) +
+  scale_x_continuous(limits = c(40, 150), breaks = seq(0, 300, by = 25))+
+  scale_y_continuous(limits = c(-0.5, 3.5), breaks = seq(-0.5, 3.5, by = 0.5)) +
+  labs(y = 'T cell proliferation (MFI)', x = 'Average residence time (ms)')
+
+
+merge <- grid.arrange(pCytD_tau_PI, pCytD_tau, ncol = 2)
+ggsave( "../../Figures/traditional/Figure 4correlation.png", plot = merge, width = 8, height=4)
+merge
+```
+
+
+\newpage
+
+# Correlation of Mean Cycle and PI (with 2 Tri excluded)
+
+
+```{r, echo=FALSE, fig.width=8, fig.height=4}
+
+# Correlations between PI with glycoPAINT derived Tau and Density in presence of CytD. Blue without and red is with CytD in one graph. 
+
+
+#rescued from CHAT
+#Density E CHOMR none vs CytD
+x_data <- "Density_E_BMDC_CytD"
+x2_data <- "Density_E_BMDC_None"
+y_data <- "PI"
+
+correlation_data_2Tri <- correlation_data %>% 
+  filter(Probe != '2 Tri')
+correlation_data_Control <- correlation_data %>% 
+  filter(Probe != 'Control')
+
+# Use the .data pronoun to reference the column names dynamically inside aes()
+pCytD_density <- correlation_data %>%
+  ggplot() +
+  # Red points and regression for the first x_data (Density_E_CHOMR_CytD)
+  geom_point(mapping = aes(x = .data[[x_data]], y = .data[[y_data]]), colour = 'red') + 
+  geom_smooth(mapping = aes(x = .data[[x_data]], y = .data[[y_data]]), method = "lm", 
+              formula = y ~ x, color = 'red', fill = 'mistyrose') +
+  stat_poly_eq(mapping = aes(x = .data[[x_data]], y = .data[[y_data]], 
+                             label = paste(after_stat(rr.label))), 
+               label.x = 'right',
+               formula = y ~ x, 
+               color = 'red') +
+  
+  # Blue points and regression for the second x2_data (Density_E_CHOMR_None)
+  geom_point(mapping = aes(x = .data[[x2_data]], y = .data[[y_data]]), color = 'blue') + 
+  geom_smooth(mapping = aes(x = .data[[x2_data]], y = .data[[y_data]]), method = "lm", 
+              formula = y ~ x, color = 'blue', fill = 'lightblue') +
+  stat_poly_eq(mapping = aes(x = .data[[x2_data]], y = .data[[y_data]], 
+                             label = paste(after_stat(rr.label))), 
+               label.x = 'left',
+               formula = y ~ x, 
+               color = 'blue') +
+  
+  # Remove legend for color
+  theme(legend.position = "none") +
+
+  scale_x_continuous(limits = c(0, 20), breaks = seq(0, 20, by = 5)) +
+  #scale_x_continuous(limits = c(40, 150), breaks = seq(0, 150, by = 25))+
+  scale_y_continuous(limits = c(-.5, 2.5), breaks = seq(-0.5, 2, by = 0.5)) +
+  labs(y = 'Phagocytic Index (MFI)', x = 'Density (evts/um/s)')
+   
+
+#Tau E CHOMR none vs CytD     
+x_data <- "Tau_E_BMDC_CytD"
+x2_data <- "Tau_E_BMDC_None"
+y_data <- "PI"
+
+correlation_data_2Tri <- correlation_data %>% 
+  filter(Probe != '2 Tri')
+correlation_data_Control <- correlation_data %>% 
+  filter(Probe != 'Control')
+
+# Use the .data pronoun to reference the column names dynamically inside aes()
+pCytD_tau_PI <- correlation_data %>%
+  ggplot() +
+  # Red points and regression for the first x_data (Density_E_CHOMR_CytD)
+  geom_point(mapping = aes(x = .data[[x_data]], y = .data[[y_data]]), colour = 'red') + 
+  geom_smooth(mapping = aes(x = .data[[x_data]], y = .data[[y_data]]), method = "lm", 
+              formula = y ~ x, color = 'red', fill = 'mistyrose') +
+  stat_poly_eq(mapping = aes(x = .data[[x_data]], y = .data[[y_data]], 
+                             label = paste(after_stat(rr.label))), 
+               label.x = 'right',
+               formula = y ~ x, 
+               color = 'red') +
+  
+  # Blue points and regression for the second x2_data (Density_E_CHOMR_None)
+  geom_point(mapping = aes(x = .data[[x2_data]], y = .data[[y_data]]), color = 'blue') + 
+  geom_smooth(mapping = aes(x = .data[[x2_data]], y = .data[[y_data]]), method = "lm", 
+              formula = y ~ x, color = 'blue', fill = 'lightblue') +
+  stat_poly_eq(mapping = aes(x = .data[[x2_data]], y = .data[[y_data]], 
+                             label = paste(after_stat(rr.label))), 
+               label.x = 'left',
+               formula = y ~ x, 
+               color = 'blue') +
+  
+  # Remove legend for color
+#  theme(legend.position = "none") +
+
+  #scale_x_continuous(limits = c(0, 20), breaks = seq(0, 20, by = 5)) +
+  scale_x_continuous(limits = c(40, 150), breaks = seq(0, 150, by = 25))+
+  scale_y_continuous(limits = c(-.5, 2.5), breaks = seq(-0.5, 2, by = 0.5)) +
+  labs(y = 'Phagocytic Index (MFI)', x = 'Average residence time (ms)')
+
+merge <- grid.arrange(pCytD_density, pCytD_tau_PI, ncol = 2)
+merge
+
+```
+
+
+\newpage
+
+# Correlation of Mean Cycle and glycoPAINT CytD kinetics
+
+
+```{r, echo=FALSE, fig.width=8, fig.height=4}
+# Correlations between mean_cycle with glycoPAINT derived Tau and Density in presence of CytD. Blue without and red is with CytD in one graph. 
+
+
+#rescued from CHAT
+#Density E CHOMR none vs CytD
+x_data <- "Density_E_CHOMR_CytD"
+x2_data <- "Density_E_CHOMR_None"
+y_data <- "mean_cycle"
+
+correlation_data_2Tri <- correlation_data %>% 
+  filter(Probe != '2 Tri')
+correlation_data_Control <- correlation_data %>% 
+  filter(Probe != 'Control')
+
+# Use the .data pronoun to reference the column names dynamically inside aes()
+pCytD_density <- correlation_data %>%
+  ggplot() +
+  # Red points and regression for the first x_data (Density_E_CHOMR_CytD)
+  geom_point(mapping = aes(x = .data[[x_data]], y = .data[[y_data]]), colour = 'red') + 
+  geom_smooth(mapping = aes(x = .data[[x_data]], y = .data[[y_data]]), method = "lm", 
+              formula = y ~ x, color = 'red', fill = 'mistyrose') +
+  stat_poly_eq(mapping = aes(x = .data[[x_data]], y = .data[[y_data]], 
+                             label = paste(after_stat(rr.label))), 
+               label.x = 'right',
+               formula = y ~ x, 
+               color = 'red') +
+  
+  # Blue points and regression for the second x2_data (Density_E_CHOMR_None)
+  geom_point(mapping = aes(x = .data[[x2_data]], y = .data[[y_data]]), color = 'blue') + 
+  geom_smooth(mapping = aes(x = .data[[x2_data]], y = .data[[y_data]]), method = "lm", 
+              formula = y ~ x, color = 'blue', fill = 'lightblue') +
+  stat_poly_eq(mapping = aes(x = .data[[x2_data]], y = .data[[y_data]], 
+                             label = paste(after_stat(rr.label))), 
+               label.x = 'left',
+               formula = y ~ x, 
+               color = 'blue') +
+  
+  # Remove legend for color
+  theme(legend.position = "none") +
+
+  scale_x_continuous(limits = c(0, 20), breaks = seq(0, 20, by = 5)) +
+  #scale_x_continuous(limits = c(40, 150), breaks = seq(0, 150, by = 25))+
+  scale_y_continuous(limits = c(-0.5, 3.5), breaks = seq(-0.5, 3.5, by = 0.5)) +
+  labs(y = 'T cell proliferation (MFI)', x = 'Density (evts/um/s)')
+   
+
+#Tau E CHOMR none vs CytD     
+x_data <- "Tau_E_CHOMR_CytD"
+x2_data <- "Tau_E_CHOMR_None"
+y_data <- "mean_cycle"
+
+correlation_data_2Tri <- correlation_data %>% 
+  filter(Probe != '2 Tri')
+correlation_data_Control <- correlation_data %>% 
+  filter(Probe != 'Control')
+
+# Use the .data pronoun to reference the column names dynamically inside aes()
+pCytD_tau <- correlation_data %>%
+  ggplot() +
+  # Red points and regression for the first x_data (Density_E_CHOMR_CytD)
+  geom_point(mapping = aes(x = .data[[x_data]], y = .data[[y_data]]), colour = 'red') + 
+  geom_smooth(mapping = aes(x = .data[[x_data]], y = .data[[y_data]]), method = "lm", 
+              formula = y ~ x, color = 'red', fill = 'mistyrose') +
+  stat_poly_eq(mapping = aes(x = .data[[x_data]], y = .data[[y_data]], 
+                             label = paste(after_stat(rr.label))), 
+               label.x = 'right',
+               formula = y ~ x, 
+               color = 'red') +
+  
+  # Blue points and regression for the second x2_data (Density_E_CHOMR_None)
+  geom_point(mapping = aes(x = .data[[x2_data]], y = .data[[y_data]]), color = 'blue') + 
+  geom_smooth(mapping = aes(x = .data[[x2_data]], y = .data[[y_data]]), method = "lm", 
+              formula = y ~ x, color = 'blue', fill = 'lightblue') +
+  stat_poly_eq(mapping = aes(x = .data[[x2_data]], y = .data[[y_data]], 
+                             label = paste(after_stat(rr.label))), 
+               label.x = 'left',
+               formula = y ~ x, 
+               color = 'blue') +
+  
+  # Remove legend for color
+  theme(legend.position = "none") +
+
+  #scale_x_continuous(limits = c(0, 20), breaks = seq(0, 20, by = 5)) +
+  scale_x_continuous(limits = c(40, 150), breaks = seq(0, 150, by = 25))+
+  scale_y_continuous(limits = c(-0.5, 3.5), breaks = seq(-0.5, 3.5, by = 0.5)) +
+  labs(y = 'T cell proliferation (MFI)', x = 'Average residence time (ms)')
+
+merge <- grid.arrange(pCytD_density, pCytD_tau, ncol = 2)
+merge
+```

@@ -1,0 +1,415 @@
+
+---
+title: "Epitope on BMDC comparison of adjuvants CytD and None"
+subtitle: 'BMDC - Epitope - CytD and None.Rmd'
+fontfamily: sans
+output:
+  pdf_document:
+    toc: yes
+    toc_depth: 3
+  html_document: default
+  word_document: default
+---
+
+```{r Libraries, echo=FALSE, warning=FALSE, message=FALSE}
+
+library(tidyverse)
+library(readxl)
+library(knitr)
+library(ggsignif)
+library(gridExtra)
+
+```
+
+
+```{r Source, echo=FALSE}
+
+source('../Utility Code/Read Data - Regular Probes - Traditional.r')
+source('../Utility Code/Colours.r')
+source('../Utility Code/Significance.r')
+
+```
+
+```{r , echo=FALSE}
+
+data_file_regular_20_02 <- '../../Data/Paint Regular Probes - 20 squares - 2 DR'
+data_file_regular_20_05 <- '../../Data Integrated/Paint Regular Probes - 20 squares - 5 DR'
+data_file_regular_20_10 <- '../../Data Integrated/Paint Regular Probes - 20 squares - 10 DR'
+data_file_regular_20_30 <- '../../Data Integrated/Paint Regular Probes - 20 squares - 30 DR'
+
+data_file_regular_30_02 <- '../../Data/Paint Regular Probes - 30 squares - 2 DR'
+data_file_regular_30_05 <- '../../Data Integrated/Paint Regular Probes - 30 squares - 5 DR'
+data_file_regular_30_10 <- '../../Data Integrated/Paint Regular Probes - 30 squares - 10 DR'
+data_file_regular_30_30 <- '../../Data Integrated/Paint Regular Probes - 30 squares - 30 DR'
+
+data_file <- data_file_regular_30_02
+manually_exclude <- FALSE
+duration_exclude <- TRUE
+
+```
+
+
+```{r , echo=FALSE}
+
+data <- read_data(data_file, 'O utput', manually_exclude=manually_exclude, duration_exclude=duration_exclude)
+
+squares_master <- data$squares_master
+images_master  <- data$images_master
+tracks_master  <- data$tracks_master
+
+
+#all_tracks <-read.csv("C:/Users/svk_p/OneDrive - Universiteit Leiden/Paint Example Data/Data/Paint Regular Probes - 30 Squares - 2 DR/Output/All Tracks.csv")
+
+```
+
+
+```{r, echo=FALSE}
+
+density_table <- squares_master%>% 
+  filter(Cell_Type     %in% c('CHOMR'),
+         Probe_Type    == 'Simple',
+         DC > 30000,
+         Adjuvant      == 'None',
+         Threshold     == 5)
+table(density_table$Probe) # to verify all probes are occuring here
+
+
+
+```
+
+\newpage
+
+# Experiment Overview
+
+
+```{r echo=FALSE, selection, fig.fullwidth=TRUE, fig.height=12, fig.width=12, warning=FALSE}
+
+tau_data <- squares_master %>% 
+  filter(Cell_Type == 'BMDC') %>% 
+  filter(Probe_Type == 'Epitope') %>% 
+  filter(Adjuvant %in% c('None', 'CytD'))
+
+
+experiment_overview <- tau_data %>% 
+  group_by(Adjuvant, Experiment_Date, Cell_Type, Probe_Type, Probe, Concentration, Threshold) %>% 
+  summarise(Nr_Exps    = n_distinct(Experiment_Name), 
+            Nr_Images  = n_distinct(Recording_Name), 
+            Nr_Squares = n(), 
+            .groups = 'keep') 
+
+experiment_overview$Squares_Images_Ratio <- round(experiment_overview$Nr_Squares / experiment_overview$Nr_Images, digits = 0)
+kable(experiment_overview, col.names = c('Adjuvant',
+                                         'Date',
+                                         'C Type',
+                                         'P Type',
+                                         'Probe',
+                                         'Conc',
+                                         'Thresh',
+                                         'Nr Exp',
+                                         'Nr Imgs',
+                                         'Nr Sqs',
+                                         'Sqs/Imgs'))
+write_csv(experiment_overview, '~/Downloads/New Experiments Summary - Overview with Threshold and Concentration.csv')
+
+```
+
+
+\newpage
+
+# Tau of Epitope probes on BMDC
+
+## Without significance
+
+```{r echo=FALSE, tau_adj, fig.fullwidth=TRUE, fig.height=10, fig.width=24, warning=FALSE}
+meds <- tau_data %>% 
+  group_by(Probe, Adjuvant, Structure) %>%
+  summarize(med = round(median(Tau), 0), .groups = 'keep')
+
+tau_data %>%
+  ggplot(aes(x=Probe, y = Tau, fill = Structure)) + 
+    geom_violin(width = 0.9, show.legend = FALSE, trim = TRUE, scale='width') +
+    geom_text(data = meds, aes(y = med, label = round(med, 2)), size = 3, vjust = -0.5, face = "bold", color = "black") +
+    geom_text(aes(label=paste0("n = ", ..count..)), y = 0, stat = 'count', colour = "black", size = 3) +  
+    labs(x = '', 
+         y = 'Average residence time (ms)',
+         caption = '') +
+    scale_y_continuous(limits = c(0, 400), breaks=seq(0, 400, 200)) +
+    scale_fill_manual(values=c(green_mono,
+                               green_tri,
+                               green_control)) +
+    theme_light(base_size = 16) +
+    theme(panel.border = element_blank(), panel.grid.minor = element_blank(), axis.line = element_line(colour = "black")) +
+    facet_grid(Cell_Type ~ Adjuvant, drop = TRUE)
+  
+```
+
+
+
+\newpage
+
+## With significance
+
+```{r echo=FALSE, tau_significance_bmdc_adj, fig.fullwidth=TRUE, fig.height=10, fig.width=24, warning=FALSE}
+  
+y_limit    <- 600
+
+tau_data <- squares_master %>% 
+  filter(Cell_Type   == 'BMDC') %>% 
+  filter(Probe_Type  == 'Epitope') %>% 
+  filter(Adjuvant    == 'None') 
+
+# Prepare significance info
+
+significance_tau <- create_tau_significance_table(tau_data)
+signif           <- list(c('6 Mono', '1 Tri'),
+                         c('6 Mono', '6 Tri'),
+                         c('1 Tri', '6 Tri'))
+signif_value     <- c(get_significance(significance_tau, '6 Mono', '1 Tri'),
+                      get_significance(significance_tau, '6 Mono', '6 Tri'),
+                      get_significance(significance_tau, '1 Tri',  '6 Tri'))
+signif_num       <- as.numeric(signif_value)
+for ( i in 1:length(signif_value)) {
+  if (signif_num[i] > 0.05) {
+    signif_value[i] = 'NS'
+  }
+}
+
+meds <- tau_data %>% 
+  group_by(Probe, Adjuvant, Structure) %>%
+  summarize(med = round(median(Tau), 0), .groups = 'keep')
+
+p1 <- tau_data %>%
+  ggplot(aes(x=Probe, y = Tau, fill = Structure)) + 
+    geom_violin(width = 0.9, show.legend = FALSE, trim = TRUE, scale='width') +
+    geom_signif(comparisons = signif, annotations = signif_value, y_position = 400, step_increase = 0.1) +
+    geom_text(data = meds, aes(y = med, label = round(med, 2)), size = 3, vjust = -0.5, face = "bold", color = "black") +
+    geom_text(aes(label=paste0("n = ", ..count..)), y = 0, stat = 'count', colour = "black", size = 3) +  
+    labs(x = '', 
+         y = 'Average residence time (ms)',
+         caption = '') +
+    scale_y_continuous(limits = c(0, y_limit), breaks=seq(0, y_limit, 100)) +
+    scale_fill_manual(values=c(green_mono,
+                               green_tri,
+                               green_control)) +
+    scale_x_discrete(labels=c('1 Mono', '6 Mono', '1 Tri', '2 Tri', '6 Tri', 'Control')) +
+    theme_light(base_size = 16) +
+    theme(panel.border = element_blank(), panel.grid.minor = element_blank(), axis.line = element_line(colour = "black")) +
+    facet_wrap( ~ Adjuvant, drop = TRUE)
+```
+
+
+
+```{r echo=FALSE, density_significance_mr_adj, fig.fullwidth=TRUE, fig.height=4, fig.width=6, warning=FALSE}
+  
+y_limit    <- 600
+
+tau_data <- squares_master %>% 
+  filter(Cell_Type   == 'BMDC') %>% 
+  filter(Probe_Type  == 'Epitope') %>% 
+  filter(Adjuvant    == 'None') %>%
+  filter(DC > 1000000)
+
+ signif <- list(c('1 Mono', '6 Mono'),
+                c('1 Tri', '2 Tri'),
+                c('2 Tri', '6 Tri'),
+                c('1 Tri', '6 Tri'))
+  
+  # Retrieve the previously calculated significance for these pairs
+  
+signif_value  <- c(get_significance(significance_tau, '1 Mono', '6 Mono'),
+                   get_significance(significance_tau, '1 Tri',  '2 Tri'),
+                   get_significance(significance_tau, '2 Tri',  '6 Tri'),
+                   get_significance(significance_tau, '1 Tri',  '6 Tri'))
+  
+  
+signif_num       <- as.numeric(signif_value)
+for ( i in 1:length(signif_value)) {
+  if (signif_num[i] > 0.05) {
+    signif_value[i] = 'NS'
+  }
+}
+
+meds <- tau_data %>% 
+  group_by(Probe, Cell_Type, Probe_Type, Structure) %>%
+  summarize(med = round(median(Tau), 0), .groups = 'keep')
+
+p2 <- tau_data %>%
+  ggplot(aes(x=Probe, y = DC, fill = Structure)) + 
+    geom_violin(width = 0.9, show.legend = FALSE, trim = TRUE, scale='width') +
+    geom_signif(comparisons = signif, annotations = signif_value, y_position = 400, step_increase = 0.1) +
+    geom_text(data = meds, aes(y = med, label = round(med, 2)), size = 3, vjust = -0.5, face = "bold", color = "black") +
+    geom_text(aes(label=paste0("n = ", ..count..)), y = 0, stat = 'count', colour = "black", size = 3) +  
+    labs(x = '', 
+         y = 'Average residence time (ms)',
+         caption = '') +
+    #scale_y_continuous(limits = c(0, y_limit), breaks=seq(0, y_limit, 100)) +
+    scale_fill_manual(values=c(green_mono,
+                               green_tri,
+                               green_control)) +
+    theme_light(base_size = 10) +
+    theme(panel.border = element_blank(), panel.grid.minor = element_blank(), axis.line = element_line(colour = "black")) +
+    facet_wrap( ~ Adjuvant, drop = TRUE)
+p2
+
+ggsave("../../Figures/traditional/Figure 5c.png", width = 6, height=4)
+```
+
+
+
+
+```{r echo=FALSE, combine_2, fig.fullwidth=TRUE, fig.height=6, fig.width=12, warning=FALSE}
+grid.arrange(p1,
+             p2, 
+             ncol = 2)
+
+```
+
+
+
+\newpage
+
+# Density of Epitope probes on BMDC (wih mix of Threshold and concentrations)
+
+## Without significance
+
+```{r echo=FALSE, density_adj, fig.fullwidth=TRUE, fig.height=12, fig.width=12, warning=FALSE}
+
+y_limit    <- 40
+
+density_data <- squares_master %>% 
+  filter(Cell_Type   == 'BMDC') %>% 
+  filter(Probe_Type  == 'Epitope') %>% 
+  filter(Adjuvant    %in% c('CytD', 'None')) 
+
+meds <- density_data %>% 
+  group_by(Probe, Adjuvant, Structure) %>%
+  summarize(med = round(median(Density), 0), .groups = 'keep')
+
+density_data %>%
+  ggplot(aes(x=Probe, y = Density, fill = Structure)) + 
+    geom_violin(width = 0.9, show.legend = FALSE, trim = TRUE, scale='width') +
+    geom_text(data = meds, aes(y = med, label = round(med, 2)), size = 3, vjust = -0.5, face = "bold", color = "black") +
+    geom_text(aes(label=paste0("n = ", ..count..)), y = 0, stat = 'count', colour = "black", size = 3) +  
+    labs(x = '', 
+         y = 'Density',
+         caption = '') +
+    scale_y_continuous(limits = c(0, y_limit), breaks=seq(0, y_limit, 10)) +
+    scale_fill_manual(values=c(green_mono,
+                               green_tri,
+                               green_control)) +
+    theme_light(base_size = 16) +
+    theme(panel.border = element_blank(), panel.grid.minor = element_blank(), axis.line = element_line(colour = "black")) +
+    facet_grid(Cell_Type ~ Adjuvant, drop = TRUE)
+  
+```
+
+
+\newpage
+
+## With significance
+```{r echo=FALSE, density_significance_bmdc_adj, fig.fullwidth=TRUE, fig.height=10, fig.width=12, warning=FALSE}
+  
+y_limit    <- 50
+
+density_data <- squares_master %>% 
+  filter(Cell_Type   == 'BMDC') %>% 
+  filter(Probe_Type  == 'Epitope') %>% 
+  filter(Adjuvant    == 'None') 
+
+# Prepare significance info
+
+significance_density <- create_density_significance_table(density_data)
+signif               <- list(c('6 Mono', '1 Tri'),
+                             c('6 Mono', '6 Tri'),
+                             c('1 Tri', '6 Tri'))
+signif_value     <- c(get_significance(significance_density, '6 Mono', '1 Tri'),
+                      get_significance(significance_density, '6 Mono', '6 Tri'),
+                      get_significance(significance_density, '1 Tri',  '6 Tri'))
+signif_num       <- as.numeric(signif_value)
+for ( i in 1:length(signif_value)) {
+  if (signif_num[i] > 0.05) {
+    signif_value[i] = 'NS'
+  }
+}
+
+meds <- density_data %>% 
+  group_by(Probe, Adjuvant, Structure) %>%
+  summarize(med = round(median(Density), 0), .groups = 'keep')
+
+p1 <- density_data %>%
+  ggplot(aes(x=Probe, y = Density, fill = Structure)) + 
+    geom_violin(width = 0.9, show.legend = FALSE, trim = TRUE, scale='width') +
+    geom_signif(comparisons = signif, annotations = signif_value, y_position = 30, step_increase = 0.1) +
+    geom_text(data = meds, aes(y = med, label = round(med, 2)), size = 3, vjust = -0.5, face = "bold", color = "black") +
+    geom_text(aes(label=paste0("n = ", ..count..)), y = 0, stat = 'count', colour = "black", size = 3) +  
+    labs(x = '', 
+         y = 'Density',
+         caption = '') +
+    scale_y_continuous(limits = c(0, y_limit), breaks=seq(0, y_limit, 100)) +
+    scale_fill_manual(values=c(green_mono,
+                               green_tri,
+                               green_control)) +
+    scale_x_discrete(labels=c('1 Mono', '6 Mono', '1 Tri', '2 Tri', '6 Tri', 'Control')) +
+    theme_light(base_size = 16) +
+    theme(panel.border = element_blank(), panel.grid.minor = element_blank(), axis.line = element_line(colour = "black")) +
+    facet_wrap( ~ Adjuvant, drop = TRUE)
+```
+
+
+
+```{r echo=FALSE, fig.fullwidth=TRUE, fig.height=10, fig.width=12, warning=FALSE}
+  
+
+y_limit    <- 50
+
+density_data <- squares_master %>% 
+  filter(Cell_Type   == 'BMDC') %>% 
+  filter(Probe_Type  == 'Epitope') %>% 
+  filter(Adjuvant    == 'CytD')
+
+significance_density <- create_density_significance_table(density_data)
+signif               <- list(c('6 Mono', '1 Tri'),
+                             c('1 Mono', '6 Mono'))
+signif_value     <- c(get_significance(significance_density, '6 Mono', '1 Tri'),
+                      get_significance(significance_density, '1 Mono', '6 Mono'))
+signif_num       <- as.numeric(signif_value)
+for ( i in 1:length(signif_value)) {
+  if (signif_num[i] > 0.05) {
+    signif_value[i] = 'NS'
+  }
+}
+
+meds <- density_data %>% 
+  group_by(Probe, Cell_Type, Probe_Type, Structure) %>%
+  summarize(med = round(median(Density), 0), .groups = 'keep')
+
+p2 <- tau_data %>%
+  ggplot(aes(x=Probe, y = Density, fill = Structure)) + 
+    geom_violin(width = 0.9, show.legend = FALSE, trim = TRUE, scale='width') +
+    geom_signif(comparisons = signif, annotations = signif_value, y_position = 40, step_increase = 0.1) +
+    geom_text(data = meds, aes(y = med, label = round(med, 2)), size = 3, vjust = -0.5, face = "bold", color = "black") +
+    geom_text(aes(label=paste0("n = ", ..count..)), y = 0, stat = 'count', colour = "black", size = 3) +  
+    labs(x = '', 
+         y = 'Average residence time (ms)',
+         caption = '') +
+    scale_y_continuous(limits = c(0, y_limit), breaks=seq(0, y_limit, 100)) +
+    scale_fill_manual(values=c(green_mono,
+                               green_tri,
+                               green_control)) +
+    theme_light(base_size = 16) +
+    theme(panel.border = element_blank(), panel.grid.minor = element_blank(), axis.line = element_line(colour = "black")) +
+    facet_wrap( ~ Adjuvant, drop = TRUE)
+```
+
+
+
+
+```{r echo=FALSE, combine_3, fig.fullwidth=TRUE, fig.height=10, fig.width=12, warning=FALSE}
+grid.arrange(p1,
+             p2, 
+             ncol = 2)
+
+```
+
+
+

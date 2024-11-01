@@ -1,0 +1,229 @@
+---
+title: "histograms for squares"
+output: html_document
+date: "2024-10-09"
+---
+
+```{r setup, include=FALSE}
+library(ggplot2)
+library(dplyr)
+library(RColorBrewer)
+library(tidyverse)
+
+
+```
+
+## Squares label for WT figure
+
+
+```{r echo=FALSE, fig.fullwidth=TRUE, fig.height=10, fig.width=24}
+squares_label <- read_csv("D:/Paint Data - v3/Paint Data - v3/Regular Probes/Paint Regular Probes - 20 Squares - 2 DR/230516/230516-Exp-3-A3-1-threshold-20/TrackMate Tracks/230516-Exp-3-A3-1-threshold-20-tracks-label.csv")
+
+colnames(squares_label) <- c("LABEL",	"NUMBER_SPOTS",	"TRACK_DURATION",	"TRACK_X_LOCATION",	"TRACK_Y_LOCATION",	"DIFFUSION_COEFFICIENT", "Square_Nr",	"Label_Nr")
+
+to_plot <- squares_label %>%
+  filter(Label_Nr %in% c(1,4,60))
+
+
+
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r echo=FALSE, fig.fullwidth=TRUE, fig.height=4, fig.width=4}
+# Create a histogram plot with half offset
+
+
+
+# Get unique labels
+unique_labels <- unique(to_plot$Label_Nr)
+num_labels <- length(unique_labels)
+
+# Generate a color palette based on the number of unique Label_Nr
+if (num_labels < 3) {
+  color_palette <- c("gray", "orange", "purple")  # Default colors
+} else {
+  color_palette <- brewer.pal(min(num_labels, 9), "Set1")  # Use RColorBrewer
+}
+
+histo <- to_plot %>%
+ggplot()+
+  geom_histogram(aes(x = TRACK_DURATION, colour = as.factor(Label_Nr)),
+                 binwidth = 0.05, alpha = 0.5, position = "identity") +
+  labs(       x = "Track Duration (s)",
+       y = "Frequency",
+       colour = "Square Nr") +
+  scale_fill_manual(values = color_palette) +
+  theme_minimal(base_size = 5) +
+  scale_x_continuous(limits = c(0, 2), breaks = seq(0, 2, by = 0.5)) +
+  scale_y_continuous(limits = c(0, 30), breaks = seq(0, 30, by = 5)) +
+   theme(
+    legend.text = element_text(size = 5),  # Adjust legend text size
+    legend.title = element_text(size = 5),  # Adjust legend title size
+    legend.key.size = unit(.1, "cm"),  # Adjust size of legend keys
+    legend.position = "inside"  # Position the legend
+  )
+ggsave("C:/Users/svk_p/iCloudDrive/Master Results/PAINT Pipeline/Python and R Code/Paint-R/Figures/Traditional/Histo.png", width = 2, height=2)
+histo
+
+
+```
+
+## Squares label for MR-/- figure
+
+
+```{r echo=FALSE, fig.fullwidth=TRUE, fig.height=10, fig.width=24}
+squares_label <- read_csv("D:/Paint Regular Probes - Traditional - 20 Squares - 2 DR/230516/230516-Exp-3-A3-1-threshold-20/tracks/230516-Exp-3-A3-1-threshold-20-full-tracks_label.csv")
+
+colnames(squares_label) <- c("LABEL",	"NUMBER_SPOTS",	"TRACK_DURATION",	"TRACK_X_LOCATION",	"TRACK_Y_LOCATION",	"Square_Nr",	"Label_Nr")
+
+to_plot <- squares_label %>%
+  filter(Label_Nr %in% c(1,4,60))
+
+
+
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r echo=FALSE, fig.fullwidth=TRUE, fig.height=2, fig.width=2}
+# Create a histogram plot with half offset
+
+
+
+# Get unique labels
+unique_labels <- unique(to_plot$Label_Nr)
+num_labels <- length(unique_labels)
+
+# Generate a color palette based on the number of unique Label_Nr
+if (num_labels < 3) {
+  color_palette <- c("gray", "orange", "purple")  # Default colors
+} else {
+  color_palette <- brewer.pal(min(num_labels, 9), "Set1")  # Use RColorBrewer
+}
+
+histo <- to_plot %>%
+ggplot()+
+  geom_histogram(aes(x = TRACK_DURATION, colour = as.factor(Label_Nr)),
+                 binwidth = 0.05, alpha = 0.5, position = "identity") +
+  labs(       x = "Track Duration (s)",
+       y = "Frequency",
+       colour = "Square Nr") +
+  scale_fill_manual(values = color_palette) +
+  theme_minimal(base_size = 5) +
+  scale_x_continuous(limits = c(0, 2), breaks = seq(0, 2, by = 0.5)) +
+  scale_y_continuous(limits = c(0, 30), breaks = seq(0, 30, by = 5)) +
+   theme(
+    legend.text = element_text(size = 5),  # Adjust legend text size
+    legend.title = element_text(size = 5),  # Adjust legend title size
+    legend.key.size = unit(.1, "cm"),  # Adjust size of legend keys
+    legend.position = "inside"  # Position the legend
+  )
+ggsave("C:/Users/svk_p/iCloudDrive/Master Results/PAINT Pipeline/Python and R Code/Paint-R/Figures/Traditional/Histo2.png", width = 2, height=1)
+histo
+
+
+```
+
+
+## Squares label for MR-/- figure
+
+
+```{r echo=FALSE, fig.fullwidth=TRUE, fig.height=10, fig.width=24}
+squares_label <- read_csv("D:/Paint Regular Probes - Traditional - 20 Squares - 2 DR/240814/240814-Exp-3-A3-1-threshold-10/tracks/240814-Exp-3-A3-1-threshold-10-full-tracks_label.csv")
+
+colnames(squares_label) <- c("LABEL",	"NUMBER_SPOTS",	"TRACK_DURATION",	"TRACK_X_LOCATION",	"TRACK_Y_LOCATION",	"Square_Nr",	"Label_Nr")
+
+to_plot <- squares_label %>%
+  filter(Label_Nr %in% c(1,4,60))
+
+
+
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r echo=FALSE, fig.fullwidth=TRUE, fig.height=2, fig.width=2}
+# Create a histogram plot with half offset
+
+
+
+# Get unique labels
+unique_labels <- unique(to_plot$Label_Nr)
+num_labels <- length(unique_labels)
+
+# Generate a color palette based on the number of unique Label_Nr
+if (num_labels < 3) {
+  color_palette <- c("gray", "orange", "purple")  # Default colors
+} else {
+  color_palette <- brewer.pal(min(num_labels, 9), "Set1")  # Use RColorBrewer
+}
+
+histo <- to_plot %>%
+ggplot()+
+  geom_histogram(aes(x = TRACK_DURATION, colour = as.factor(Label_Nr)),
+                 binwidth = 0.05, alpha = 0.5, position = "identity") +
+  labs(       x = "Track Duration (s)",
+       y = "Frequency",
+       colour = "Square Nr") +
+  scale_fill_manual(values = color_palette) +
+  theme_minimal(base_size = 5) +
+  scale_x_continuous(limits = c(0, 2), breaks = seq(0, 2, by = 0.5)) +
+  scale_y_continuous(limits = c(0, 30), breaks = seq(0, 30, by = 5)) +
+   theme(
+    legend.text = element_text(size = 5),  # Adjust legend text size
+    legend.title = element_text(size = 5),  # Adjust legend title size
+    legend.key.size = unit(.1, "cm"),  # Adjust size of legend keys
+    legend.position = "inside"  # Position the legend
+  )
+ggsave("C:/Users/svk_p/iCloudDrive/Master Results/PAINT Pipeline/Python and R Code/Paint-R/Figures/Traditional/Histo2.png", width = 2, height=1)
+histo
+
+
+```
+
+
+
+```{r echo=FALSE, fig.fullwidth=TRUE, fig.height=12, fig.width=12}
+# Create a histogram plot with half offset
+
+
+
+# Load necessary libraries
+library(ggplot2)
+library(tidyr)
+library(dplyr)
+
+
+
+# Read the CSV file
+data <- squares_label
+
+# Select only the relevant columns
+data <- data %>%
+  select(Square_Nr, TRACK_DURATION)
+
+# Convert Square_Nr to x and y coordinates
+data <- data %>%
+  mutate(
+    x = (Square_Nr - 1) %% 20 + 1,  # Column (1-20)
+    y = 20 - (Square_Nr - 1) %/% 20  # Row (1-20)
+  )
+
+# Create the heatmap
+ggplot(data, aes(x = x, y = y, fill = TRACK_DURATION)) +
+  geom_tile() +
+  scale_fill_gradient(low = "white", high = "red") +
+  labs(x = "Column (1-20)", y = "Row (1-20)", title = "Heatmap of Square Density") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 0, hjust = 0.5),
+        axis.text.y = element_text(angle = 0, hjust = 0.5))
+
+
+```

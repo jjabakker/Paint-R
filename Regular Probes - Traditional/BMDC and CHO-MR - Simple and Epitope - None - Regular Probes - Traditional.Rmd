@@ -1,0 +1,317 @@
+---
+title: "BMDC and CHO-MR with Epitope and Simple probes no Adjuvant"
+subtitle: 'BMDC and CHO-MR - Simple and Epitope - None - Regular Probes - Traditional.Rmd'
+fontfamily: sans
+output:
+  pdf_document:
+    toc: yes
+    toc_depth: 3
+  html_document: default
+  word_document: default
+  editor_options: 
+  chunk_output_type: inline
+---
+
+```{r Libraries, echo=FALSE, warning=FALSE, message=FALSE}
+library(tidyverse)
+library(readxl)
+library(knitr)
+library(ggsignif)
+library(gridExtra)
+
+options(digits=22)
+
+```
+
+
+```{r, significance, echo=FALSE}
+
+source('../Utility Code/Significance.R')
+source('../Utility Code/Read Data - Regular Probes - Traditional.R')
+source('../Utility Code/Colours.R')
+
+```
+
+
+```{r , echo=FALSE}
+
+data_file_regular_20_02 <- '../../Data - v5/Paint Regular Probes - 20 squares - 2 DR'
+data_file_regular_20_05 <- '../../Data Integrated - v2/Paint Regular Probes - 20 squares - 5 DR'
+data_file_regular_20_10 <- '../../Data Integrated - v2/Paint Regular Probes - 20 squares - 10 DR'
+data_file_regular_20_30 <- '../../Data Integrated - v2/Paint Regular Probes - 20 squares - 30 DR'
+
+data_file_regular_30_02 <- '../../Data Integrated - v2/Paint Regular Probes - 30 squares - 2 DR'
+data_file_regular_30_05 <- '../../Data Integrated - v2/Paint Regular Probes - 30 squares - 5 DR'
+data_file_regular_30_10 <- '../../Data Integrated - v2/Paint Regular Probes - 30 squares - 10 DR'
+data_file_regular_30_30 <- '../../Data Integrated - v2/Paint Regular Probes - 30 squares - 30 DR'
+
+data_file <- data_file_regular_20_02
+manually_exclude <- FALSE
+duration_exclude <- TRUE
+
+```
+
+
+```{r , echo=FALSE}
+
+data <- read_data(data_file, 'Output', manually_exclude=manually_exclude, duration_exclude=duration_exclude)
+
+squares_master <- data$squares_master
+images_master  <- data$images_master
+
+```
+
+
+
+
+\newpage
+
+# Significance of Tau results
+
+## CHO-MR - Simple - None
+```{r, echo=FALSE}
+td <- squares_master %>% 
+  filter(Cell_Type  ==   'CHOMR') %>% 
+  filter(Probe_Type ==   'Simple') %>% 
+  filter(Structure  %in% c('Mono', 'Tri', 'Control')) %>% 
+  filter(Adjuvant   ==   'None')
+
+significance_tau <- create_tau_significance_table(td) 
+
+significance_tau %>% 
+   kable(row.names = FALSE)
+```
+
+## CHO-MR - Epitope - None
+
+```{r, echo=FALSE}
+
+td <- squares_master %>% 
+  filter(Cell_Type   ==   'CHOMR') %>% 
+  filter(Probe_Type  ==   'Epitope') %>% 
+  filter(Structure   %in%  c('Mono', 'Tri', 'Control')) %>% 
+  filter(Adjuvant    ==   'None')
+
+significance_tau <- create_tau_significance_table(td) 
+
+significance_tau %>% 
+   kable(row.names = FALSE)
+```
+
+\newpage
+
+# Tau of probes on CHO-MR and BMDC
+
+Here the simple and epitope probes on CHO-MRE and BMDC are shown
+
+```{r echo=FALSE, tau, fig.fullwidth=TRUE, fig.height=12, fig.width=12}
+
+
+tau_data <- squares_master %>% 
+  filter(Cell_Type  %in% c('CHOMR', 'BMDC')) %>%
+  filter(Probe_Type %in% c('Simple')) %>%    
+  filter(Probe  %in% c('1 Mono', '2 Tri', '6 Tri')) 
+
+meds <- tau_data %>% 
+  group_by(Probe, Cell_Type, Probe_Type, Structure) %>%
+  summarize(med = round(median(Tau), 0), .groups = 'keep')
+
+
+ggplot(data = tau_data, aes(x=Probe, y = Tau, fill = Structure)) + 
+    # geom_violin(width = 0.5, show.legend = FALSE) +
+    geom_violin(width = 0.9, show.legend = FALSE, trim = TRUE, scale='width') +
+    geom_text(data = meds, aes(y = med, label = round(med, 2)), size = 3, vjust = -0.5, color = "black") +
+    geom_text(aes(label=paste0("n = ", after_stat(count))), y = 0, stat = 'count', colour = "black", size = 3) +  
+    labs(x = '', 
+         y = 'Average residence time (ms)',
+         caption = '') +
+    scale_y_continuous(limits = c(0, 600), breaks=seq(0, 600, 100)) +
+    scale_fill_manual(values=c(green_mono,
+                               green_tri,
+                               green_control)) +
+    theme_light(base_size = 16) +
+    theme(panel.border = element_blank(), panel.grid.minor = element_blank(), axis.line = element_line(colour = "black")) +
+      facet_grid(Cell_Type ~ Probe_Type, drop = TRUE)
+
+
+```
+
+\newpage
+
+# Tau of probes on CHO-MR and BMDC with significance indicated
+
+Here the simple and epitope probes on CHO-MRE and BMDC are shown
+
+```{r echo=FALSE, tau_significance_box, fig.fullwidth=TRUE, fig.height=10, fig.width=12}
+
+generate_tau_significance <- function(plot_data, y_limit, grid) {
+
+
+  significance_tau <- create_tau_significance_table(plot_data)
+  
+  # Specify which pairs of probes you want to compare
+  signif = list(c('1 Mono', '2 Mono'),
+                c('2 Mono', '6 Mono'),
+                c('1 Mono', '6 Mono'),
+                c('1 Tri', '2 Tri'),
+                c('2 Tri', '6 Tri'),
+                c('1 Tri', '6 Tri'))
+  
+  # Retrieve the previously calculated significance for these pairs
+  
+  signif_value  <- c(get_significance(significance_tau, '1 Mono', '2 Mono'),
+                     get_significance(significance_tau, '2 Mono', '6 Mono'),
+                     get_significance(significance_tau, '1 Mono', '6 Mono'),
+                     get_significance(significance_tau, '1 Tri',  '2 Tri'),
+                     get_significance(significance_tau, '2 Tri',  '6 Tri'),
+                     get_significance(significance_tau, '1 Tri',  '6 Tri'))
+  
+  
+  signif_num = as.numeric(signif_value)
+  for ( i in 1:length(signif_value)) {
+    if (signif_num[i] > 0.05) {
+      signif_value[i] = 'NS'
+    }
+  }
+
+  
+  meds <- plot_data %>% 
+    group_by(Probe, Cell_Type, Probe_Type, Structure) %>%
+    summarize(med = round(median(Tau), 0), .groups = 'keep')
+  
+  plot <- plot_data %>%
+    ggplot(aes(x=Probe, y = Tau, fill = Structure)) + 
+      # geom_boxplot(width = 0.9, outlier.shape = NA, show.legend = FALSE) +
+      geom_violin(width = 0.9, show.legend = FALSE, trim = TRUE, scale='width') +
+      geom_signif(comparisons = signif, annotations = signif_value, y_position = 450, step_increase = 0.2) +
+      geom_text(data = meds, aes(y = med, label = round(med, 2)), size = 3, vjust = -0.5, color = "black") +
+      geom_text(aes(label=paste0("n = ", after_stat(count))), y = 0, stat = 'count', colour = "black", size = 3) +  
+      labs(x = '', 
+           y = 'Average residence time (ms)',
+           caption = '') +
+      # scale_y_continuous(limits = c(0, y_limit), breaks=seq(0, y_limit, 200)) +
+      scale_fill_manual(values=c(green_mono,
+                                 green_tri,
+                                 green_control)) +
+      theme_light(base_size = 16) +
+      theme(panel.border = element_blank(), panel.grid.minor = element_blank(), axis.line = element_line(colour = "black")) +
+      if (grid == TRUE) {
+        facet_grid(Cell_Type ~ Probe_Type, drop = TRUE)
+      }
+      else {
+        facet_wrap( ~ Probe_Type, drop = TRUE)
+      }
+   return (plot)
+   
+}
+
+```
+
+
+### Tau and density plots for CHO-MR simple probes in 1figure
+```{r echo=FALSE, tau_significance_box, fig.fullwidth=TRUE, fig.height=10, fig.width=12}
+
+generate_tau_significance <- function(plot_data, y_limit, grid) {
+
+
+  significance_tau <- create_tau_significance_table(plot_data)
+  
+  # Specify which pairs of probes you want to compare
+  signif = list(c('1 Mono', '2 Mono'),
+                c('2 Mono', '6 Mono'),
+                c('1 Mono', '6 Mono'),
+                c('1 Tri', '2 Tri'),
+                c('2 Tri', '6 Tri'),
+                c('1 Tri', '6 Tri'))
+  
+  # Retrieve the previously calculated significance for these pairs
+  
+  signif_value  <- c(get_significance(significance_tau, '1 Mono', '2 Mono'),
+                     get_significance(significance_tau, '2 Mono', '6 Mono'),
+                     get_significance(significance_tau, '1 Mono', '6 Mono'),
+                     get_significance(significance_tau, '1 Tri',  '2 Tri'),
+                     get_significance(significance_tau, '2 Tri',  '6 Tri'),
+                     get_significance(significance_tau, '1 Tri',  '6 Tri'))
+  
+  
+  signif_num = as.numeric(signif_value)
+  for ( i in 1:length(signif_value)) {
+    if (signif_num[i] > 0.05) {
+      signif_value[i] = 'NS'
+    }
+  }
+
+  
+  meds <- plot_data %>% 
+    group_by(Probe, Cell_Type, Probe_Type, Structure) %>%
+    summarize(med = round(median(Tau), 0), .groups = 'keep')
+  
+  plot <- plot_data %>%
+    ggplot(aes(x=Probe, y = Tau, fill = Structure)) + 
+      # geom_boxplot(width = 0.9, outlier.shape = NA, show.legend = FALSE) +
+      geom_violin(width = 0.9, show.legend = FALSE, trim = TRUE, scale='width') +
+      geom_signif(comparisons = signif, annotations = signif_value, y_position = 450, step_increase = 0.2) +
+      geom_text(data = meds, aes(y = med, label = round(med, 2)), size = 3, vjust = -0.5, color = "black") +
+      geom_text(aes(label=paste0("n = ", after_stat(count))), y = 0, stat = 'count', colour = "black", size = 3) +  
+      labs(x = '', 
+           y = 'Average residence time (ms)',
+           caption = '') +
+      # scale_y_continuous(limits = c(0, y_limit), breaks=seq(0, y_limit, 200)) +
+      scale_fill_manual(values=c(green_mono,
+                                 green_tri,
+                                 green_control)) +
+      theme_light(base_size = 16) +
+      theme(panel.border = element_blank(), panel.grid.minor = element_blank(), axis.line = element_line(colour = "black")) +
+      if (grid == TRUE) {
+        facet_grid(Cell_Type ~ Probe_Type, drop = TRUE)
+      }
+      else {
+        facet_wrap( ~ Probe_Type, drop = TRUE)
+      }
+   return (plot)
+   
+}
+
+```
+
+```{r echo=FALSE, fig.fullwidth=TRUE, fig.height=10, fig.width=12}
+
+# Filter the data once
+td <- squares_master %>%
+  filter(Probe_Type %in% c('Simple', 'Epitope'),
+         Structure  %in% c('Mono', 'Tri', 'Control'),
+         Adjuvant == 'None')
+
+# Function to generate and customize the plot
+generate_and_customize_plot <- function(cell_type, probe_type, y_limit, customize_y_axis = FALSE) {
+  plot_data <- td %>%
+    filter(Cell_Type == cell_type, Probe_Type == probe_type)
+  
+  plot <- generate_tau_significance(plot_data, y_limit, customize_y_axis)
+  
+  if (customize_y_axis) {
+    plot <- plot +
+      theme(axis.text.y = element_blank(),
+            axis.ticks.y = element_blank(),
+            axis.line.y = element_blank(),
+            panel.border = element_blank(), 
+            panel.grid.minor = element_blank(),
+            axis.line = element_line(colour = "black")) +
+      labs(x = '', y = '', caption = '')
+  }
+  
+  return(plot)
+}
+
+# Generate the plots
+p1 <- generate_and_customize_plot('CHOMR', 'Simple', 800, FALSE)
+p2 <- generate_and_customize_plot('CHOMR', 'Epitope', 800, TRUE)
+p3 <- generate_and_customize_plot('BMDC', 'Simple', 800, FALSE)
+p4 <- generate_and_customize_plot('BMDC', 'Epitope', 800, TRUE)
+
+# Combine the plots in a grid
+grid.arrange(p1, p2, p3, p4, ncol = 2)
+
+```
+
+

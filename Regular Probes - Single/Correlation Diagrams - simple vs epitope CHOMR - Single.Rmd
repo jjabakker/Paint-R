@@ -1,0 +1,485 @@
+
+---
+title: "Overview of all experiment"
+subtitle: 'Overview all experiments.Rmd'
+fontfamily: sans
+output:
+  pdf_document:
+    toc: yes
+    toc_depth: 3
+  html_document: default
+  word_document: default
+---
+
+```{r Libraries, echo=FALSE, warning=FALSE, message=FALSE}
+
+library(tidyverse)
+library(readxl)
+library(knitr)
+library(ggsignif)
+library(gridExtra)
+library(kableExtra)
+library(ggpmisc)
+library(ggtext)
+
+options(digits=2)
+
+```
+
+
+```{r Source, echo=FALSE, message=FALSE}
+
+# Read in data
+
+source('../Utility Code/Read Data - Regular Probes - Single')
+source('../Utility Code/Colours.r')
+source('../Utility Code/Significance.r')
+
+```
+
+```{r , echo=FALSE}
+
+data_file_regular_20_02 <- '../../Data/Paint Regular Probes - 20 squares - 2 DR'
+data_file_regular_20_05 <- '../../Data - v5/Paint Regular Probes - 20 squares - 5 DR'
+data_file_regular_20_10 <- '../../Data - v5/Paint Regular Probes - 20 squares - 10 DR'
+data_file_regular_20_30 <- '../../Data - v5/Paint Regular Probes - 20 squares - 30 DR'
+
+data_file_regular_30_02 <- '../../Data/Paint Regular Probes - 30 squares - 2 DR'
+data_file_regular_30_05 <- '../../Data - v5/Paint Regular Probes - 30 squares - 5 DR'
+data_file_regular_30_10 <- '../../Data - v5/Paint Regular Probes - 30 squares - 10 DR'
+data_file_regular_30_20 <- '../../Data - v5/Paint Regular Probes - 30 squares - 20 DR'
+
+
+data_file <- data_file_regular_30_02
+manually_exclude <- FALSE
+duration_exclude <- TRUE
+
+```
+
+```{r , echo=FALSE}
+
+
+data <- read_data(data_file, 'Output', manually_exclude=manually_exclude, duration_exclude=duration_exclude)
+
+squares_master <- data$squares_master
+images_master  <- data$images_master
+
+
+squares_master <- data$squares_master
+images_master <- data$images_master
+
+density_table <- squares_master%>% 
+  filter(Cell_Type     %in% c('CHOMR'),
+         Probe_Type    == 'Simple',
+         Concentration == 5,
+         Adjuvant      == 'None',
+         Threshold     == 5)
+table(density_table$Probe) # to verify all probes are occuring here
+
+```
+
+```{r echo=FALSE}
+generate_labels <- function(label_names, label_numbers) {
+  # Check that label_names and label_numbers are of the same length
+  if (length(label_names) != length(label_numbers)) {
+    stop("label_names and label_numbers must have the same length.")
+  }
+  
+  # Create formatted labels with bold numbers
+  formatted_labels <- paste0(label_names, "(<b>", label_numbers, "</b>)")
+  
+  return(formatted_labels)
+}
+
+# Define the label names and corresponding numbers
+label_names <- c('1 Tri', '6 Tri')
+label_numbers <- c(11, 13)
+
+# Generate the labels
+formatted_labels <- generate_labels(label_names, label_numbers)
+
+```
+
+```{r , echo=FALSE}
+
+density_table <- squares_master%>% 
+  filter(Cell_Type     %in% c('BMDC'),
+         Probe_Type    == 'Simple',
+         Adjuvant      == 'None',
+         #Concentration == 1
+         ,Threshold     == 10,
+         )
+table(density_table$Probe) # to verify all probes are occuring here
+
+```
+```{r , echo=FALSE}
+density_table <- squares_master%>% 
+  filter(Cell_Type     %in% c('CHOMR'),
+         Probe_Type    == 'Simple',
+         Experiment_Date %in% c('230531', '230509', '230405'),
+         Adjuvant      == 'None',
+         Threshold     == 5)
+table(density_table$Probe) # to verify all probes are occuring here
+
+```
+
+# Correlations table
+
+```{r, echo=FALSE, fig.width=8, fig.height=8}
+
+# Define the meds_comb function
+meds_comb <- function(data, probe_type, cell_type, adjuvant, concentration) {
+  meds <- data %>%
+    filter(Probe_Type == probe_type,
+           Probe %in% c('1 Mono', '2 Mono', '6 Mono', '1 Tri', '2 Tri', '6 Tri'),
+           Cell_Type == cell_type,
+           Concentration == concentration, 
+           Threshold == 5,
+           Adjuvant == adjuvant) %>%
+    group_by(Probe) %>%
+    summarise(tau = median(Tau),
+              density = median(Density),
+              total_track_duration = sum(Total_Track_Duration),
+              avg_long_track_duration = median(Average_Long_Track_Duration))
+  
+  return(meds)
+}
+
+# Create a table with only the specified combinations
+combinations <- list(
+  meds_comb(squares_master, 'Simple', 'CHOMR', 'None', 1),
+  meds_comb(squares_master, 'Epitope', 'CHOMR', 'None', 5)
+)
+
+# Merge the combinations into a single tibble
+correlation_data <- reduce(combinations, left_join, by = 'Probe')
+
+# Rename the columns to reflect the conditions
+colnames(correlation_data) <- c('Probe', 
+                                  'Tau_S_CHOMR_None', 'Density_S_CHOMR_None', 'TotalTrack_S_CHOMR_None', 'AvgLongTrack_S_CHOMR_None',
+                                  'Tau_E_CHOMR_None', 'Density_E_CHOMR_None', 'TotalTrack_E_CHOMR_None', 'AvgLongTrack_E_CHOMR_None')
+
+# Remove the combinations list to free up memory
+rm(combinations)
+
+# Display the correlation data
+#kable(correlation_data) %>% 
+#  kable_styling(full_width = F) %>%
+ # row_spec(0, angle = -90)
+
+
+
+#kable(correlation_data) %>% 
+ # kable_styling(full_width = F) %>%
+  #row_spec(0, angle = -90)
+
+```
+
+
+```{r, echo=FALSE, fig.width=6, fig.height=6}
+# Epitope CHOMR vs BMDC none
+
+# Simple vs Epitope for all probes except control
+p1 <- correlation_data %>%
+  filter(Probe != 'Control') %>%
+  ggplot(mapping = aes(x=Tau_S_CHOMR_None, y=Tau_E_CHOMR_None)) +
+    geom_point() +
+    geom_text(aes(label = Probe), vjust = 0, nudge_y = 0.5) +
+    scale_x_continuous(limits = c(40, 200), breaks = seq(0, 200, by = 25)) +
+    scale_y_continuous(limits = c(40, 200), breaks = seq(0, 200, by = 25)) +
+    geom_smooth(method = "lm", formula = y ~ x) +
+    stat_poly_eq(aes(label = paste(after_stat(rr.label))), formula = y ~ x) +
+        labs(x = expression("Glycocluster " * 1/k[off] * " (ms)"), 
+       y = expression("SLP glycocluster " * 1/k[off] * " (ms)")) +
+    theme_light(base_size = 8)
+
+p1a <- correlation_data %>%
+  filter(Probe != 'Control') %>%
+  ggplot(mapping = aes(x=Density_S_CHOMR_None, y=Density_E_CHOMR_None)) +
+    geom_point() +
+    geom_text(aes(label = Probe), vjust = 0, nudge_y = 0.5) +
+    scale_x_continuous(limits = c(0, 70), breaks = seq(0, 150, by = 10)) +
+    scale_y_continuous(limits = c(0, 20), breaks = seq(0, 150, by = 5)) +
+    geom_smooth(method = "lm", formula = y ~ x) +
+    stat_poly_eq(aes(label = paste(after_stat(rr.label))), formula = y ~ x) +
+
+  labs(x = expression("Glycocluster " * k[on] * " (evts/µm"^2 * "/sec)"), 
+       y = expression("SLP glycocluster " * k[on] * " (evts/µm"^2 * "/sec)")) +
+    theme_light(base_size = 8)
+
+
+
+```
+
+
+\newpage
+# Correlation grid
+
+```{r, echo=FALSE, fig.width=5, fig.height=2.5}
+
+px <- grid.arrange(p1, p1a, nrow = 1)
+
+ggsave(plot = px, "../../Figures/traditional/Figure xxxb.png", width = 5, height=2.5)
+
+```
+
+
+# Correlation between simple and epitope for CHO-MR
+
+```{r, echo=FALSE, fig.width=3, fig.height=3}
+
+p1 + labs(x = 'Glycocluster residence time (ms)', y = 'SLP glycocluster residence time (ms)') + theme_light(base_size = 9)
+ggsave("../../Figures/traditional/Figure xb.png", width = 3, height=3)
+```
+```{r, echo=FALSE, fig.width=3, fig.height=3}
+
+p1a + labs(x = 'Glycocluster residence time (ms)', y = 'SLP glycocluster residence time (ms)') + theme_light(base_size = 9)
+ggsave("../../Figures/traditional/Figure xc.png", width = 3, height=3)
+```
+
+```{r echo=FALSE, tau, fig.fullwidth=TRUE, fig.height=12, fig.width=12}
+
+tau_data <- squares_master %>% 
+  filter(Cell_Type  %in% c('CHOMR', 'BMDC')) %>%
+  filter(Probe_Type %in% c('Simple')) %>%    
+  filter(Probe  %in% c('1 Tri', '2 Tri', '6 Tri')) %>% 
+  filter(Adjuvant   == 'None')
+
+meds <- tau_data %>% 
+  group_by(Probe, Cell_Type, Probe_Type, Structure) %>%
+  summarize(med = round(median(Tau), 0), .groups = 'keep')
+
+tau_data %>%
+  ggplot(aes(x=Probe, y = Tau, fill = Structure)) + 
+    # geom_violin(width = 0.5, show.legend = FALSE) +
+    geom_violin(width = 0.9, show.legend = FALSE, trim = TRUE, scale='width') +
+    geom_text(data = meds, aes(y = med, label = round(med, 2)), size = 3, vjust = -0.5, color = "black") +
+    geom_text(aes(label=paste0("n = ", after_stat(count))), y = 0, stat = 'count', colour = "black", size = 3) +  
+    labs(x = '', 
+         y = 'Average residence time (ms)',
+         caption = '') +
+    scale_y_continuous(limits = c(0, 600), breaks=seq(0, 600, 100)) +
+    scale_fill_manual(values=c(green_mono,
+                               green_tri,
+                               green_control)) +
+    theme_light(base_size = 16) +
+    theme(panel.border = element_blank(), panel.grid.minor = element_blank(), axis.line = element_line(colour = "black")) +
+      facet_grid(Cell_Type ~ Probe_Type, drop = TRUE)
+
+```
+
+```{r echo=FALSE, tau_significance_box, fig.fullwidth=TRUE, fig.height=10, fig.width=12}
+
+generate_tau_significance <- function(plot_data, y_limit, grid) {
+
+
+  significance_tau <- create_tau_significance_table(plot_data)
+  
+  # Specify which pairs of probes you want to compare
+  signif = list(c('1 Tri', '6 Tri'))
+  
+  # Retrieve the previously calculated significance for these pairs
+  
+  signif_value  <- c(
+                     get_significance(significance_tau, '1 Tri', '6 Tri'))
+  
+  
+  signif_num = as.numeric(signif_value)
+  for ( i in 1:length(signif_value)) {
+    if (signif_num[i] > 0.05) {
+      signif_value[i] = 'NS'
+    }
+  }
+
+  
+  meds <- plot_data %>% 
+    group_by(Probe, Cell_Type, Probe_Type, Structure) %>%
+    summarize(med = round(median(Tau), 0), .groups = 'keep')
+  
+  plot <- plot_data %>%
+    ggplot(aes(x=Probe, y = Tau, fill = Structure)) + 
+      # geom_boxplot(width = 0.9, outlier.shape = NA, show.legend = FALSE) +
+      geom_violin(width = 0.9, show.legend = FALSE, trim = F, scale='width') +
+      geom_signif(comparisons = signif, annotations = signif_value, y_position = 400, step_increase = 0.1) +
+      geom_text(data = meds, aes(y = med, label = round(med, 2)), size = 3, vjust = -0.5, color = "black") +
+      geom_text(aes(label=paste0("n = ", after_stat(count))), y = 0, stat = 'count', colour = "black", size = 3) +  
+      labs(x = '', 
+           y = expression(1/k[off] * " (ms)"),
+           caption = '') +
+      scale_y_continuous(limits = c(0, y_limit), breaks=seq(0, y_limit, 200)) +
+      scale_fill_manual(values=c(green_mono,
+                                 green_tri,
+                                 green_control)) +
+      theme_light(base_size = 16) +
+      theme(panel.border = element_blank(), panel.grid.minor = element_blank(), axis.line = element_line(colour = "black")) +
+      if (grid == TRUE) {
+        facet_grid(~ Cell_Type , drop = TRUE)
+      }
+      else {
+        facet_wrap( ~ Cell_Type, drop = TRUE)
+      }
+   return (plot)
+   
+}
+```
+
+```{r echo=FALSE, fig.fullwidth=TRUE, fig.height=4, fig.width=8}
+
+# Filter the data once
+td <- images_master %>%
+  filter(Probe %in% c('1 Tri',  '6 Tri'),
+         Probe_Type %in% c('Simple'),
+         Cell_Type  %in% c('BMDC', 'CHOMR'),
+         #Density_Ratio > 10,
+        # DC > 600000,
+         Adjuvant == 'None',
+         if_else(Cell_Type == 'CHOMR', Threshold == 5 & Concentration == 1, TRUE),
+         if_else(Cell_Type == 'BMDC', Threshold == 10, TRUE))
+
+# Function to generate and customize the plot
+generate_and_customize_plot <- function(cell_type, probe_type, y_limit, customize_y_axis = FALSE) {
+  plot_data <- td %>%
+    filter(Cell_Type == cell_type, Probe_Type == probe_type)
+  
+  plot <- generate_tau_significance(plot_data, y_limit, customize_y_axis)
+  
+  if (customize_y_axis) {
+    plot <- plot +
+      theme(axis.text.y = element_blank(),
+            axis.ticks.y = element_blank(),
+            axis.line.y = element_blank(),
+            panel.border = element_blank(), 
+            panel.grid.minor = element_blank(),
+            axis.line = element_line(colour = "black")) +
+      labs(x = '', y = '', caption = '')
+  }
+  
+  return(plot)
+}
+
+# Generate the plots
+p3 <- generate_and_customize_plot('CHOMR', 'Simple', 600, FALSE)
+p4 <- generate_and_customize_plot('BMDC', 'Simple', 600, FALSE)
+p3 <- p3 + scale_x_discrete(labels = formatted_labels) + theme(axis.text.x = element_markdown(size = 9))
+p4 <- p4 + scale_x_discrete(labels = formatted_labels) + theme(axis.text.x = element_markdown(size = 9))
+# Combine the plots in a grid
+grid.arrange(p3, p4, ncol = 2)
+
+```
+
+
+```{r echo=FALSE, fig.fullwidth=TRUE, fig.height=4, fig.width=8, warning=FALSE}
+  
+
+y_limit    <- 60
+
+density_data <- squares_master %>% 
+  filter(Cell_Type   == 'BMDC') %>% 
+  filter(Probe_Type  == 'Simple') %>% 
+  filter(Adjuvant    == 'None')%>%
+  filter(Probe %in% c('1 Tri',  '6 Tri'))%>% 
+  filter(Threshold    == 10) 
+
+significance_density <- create_density_significance_table(density_data)
+signif               <- list(c('1 Tri', '6 Tri'))
+signif_value     <- c(get_significance(significance_density, '1 Tri', '6 Tri'))
+
+signif_num       <- as.numeric(signif_value)
+for ( i in 1:length(signif_value)) {
+  if (signif_num[i] > 0.05) {
+    signif_value[i] = 'NS'
+  }
+}
+
+meds <- density_data %>% 
+  group_by(Probe, Cell_Type, Probe_Type, Structure) %>%
+  summarize(med = round(median(Density), 0), .groups = 'keep')
+
+p2 <- density_data %>%
+  ggplot(aes(x=Probe, y = Density, fill = Structure)) + 
+    geom_violin(width = 0.9, show.legend = FALSE, trim = TRUE, scale='width') +
+    geom_signif(comparisons = signif, annotations = signif_value, y_position = 40, step_increase = 0.05) +
+    geom_text(data = meds, aes(y = med, label = round(med, 2)), size = 3, vjust = -0.5, face = "bold", color = "black") +
+    geom_text(aes(label=paste0("n = ", ..count..)), y = 0, stat = 'count', colour = "black", size = 3) +  
+    labs(x = '', 
+         y = expression( k[on] * " (evts/µm"^2 * "/sec)"),
+         caption = '') +
+    scale_y_continuous(limits = c(0, y_limit), breaks=seq(0, y_limit, 20)) +
+    scale_fill_manual(values=c(green_mono,
+                               green_tri,
+                               green_control)) +
+    theme_light(base_size = 16) +
+    theme(panel.border = element_blank(), panel.grid.minor = element_blank(), axis.line = element_line(colour = "black")) +
+    facet_wrap( ~ Cell_Type, drop = TRUE) +
+    scale_x_discrete(labels = formatted_labels) +
+    theme(axis.text.x = element_markdown(size = 9))
+
+```
+
+```{r echo=FALSE, fig.fullwidth=TRUE, fig.height=10, fig.width=12, warning=FALSE}
+  
+y_limit    <- 300
+
+density_data <- squares_master %>% 
+  filter(Cell_Type   == 'CHOMR') %>% 
+  filter(Probe_Type  == 'Simple') %>% 
+  filter(Adjuvant    == 'None')%>%
+  filter(Probe %in% c('1 Tri','6 Tri'))%>% 
+  filter(Threshold    == 5)%>%
+  filter(Concentration == 1)
+
+# Prepare significance info
+
+significance_density <- create_density_significance_table(density_data)
+signif               <- list(c('1 Tri', '6 Tri'))
+signif_value     <- c(get_significance(significance_density, '1 Tri', '6 Tri'))
+                      
+signif_num       <- as.numeric(signif_value)
+for ( i in 1:length(signif_value)) {
+  if (signif_num[i] > 0.05) {
+    signif_value[i] = 'NS'
+  }
+}
+
+meds <- density_data %>% 
+  group_by(Probe, Adjuvant, Structure) %>%
+  summarize(med = round(median(Density), 0), .groups = 'keep')
+
+p1 <- density_data %>%
+  ggplot(aes(x=Probe, y = Density, fill = Structure)) + 
+    geom_violin(width = 0.9, show.legend = FALSE, trim = TRUE, scale='width') +
+    geom_signif(comparisons = signif, annotations = signif_value, y_position = 200, step_increase = 0.1) +
+    geom_text(data = meds, aes(y = med, label = round(med, 2)), size = 3, vjust = -0.5, face = "bold", color = "black") +
+    geom_text(aes(label=paste0("n = ", ..count..)), y = 0, stat = 'count', colour = "black", size = 3) +  
+    labs(x = '', 
+         y = expression( k[on] * " (evts/µm"^2 * "/sec)"),
+         caption = '') +
+    scale_y_continuous(limits = c(0, y_limit), breaks=seq(0, y_limit, 100)) +
+    scale_fill_manual(values=c(green_mono,
+                               green_tri,
+                               green_control)) +
+    theme_light(base_size = 16) +
+    theme(panel.border = element_blank(), panel.grid.minor = element_blank(), axis.line = element_line(colour = "black")) +
+    facet_wrap( ~ Cell_Type, drop = TRUE) +
+    scale_x_discrete(labels = formatted_labels)+
+    theme(axis.text.x = element_markdown(size = 9)) 
+```
+
+
+```{r echo=FALSE, combine_3, fig.fullwidth=TRUE, fig.height=4, fig.width=8, warning=FALSE}
+
+#CHO only
+chos <- grid.arrange(p3,
+             p1, 
+             ncol = 2)
+ggsave( "../../Figures/traditional/Figure 2bottomCHO.png", plot = chos, width = 6, height=3)
+```
+
+```{r echo=FALSE, combine_3, fig.fullwidth=TRUE, fig.height=4, fig.width=8, warning=FALSE}
+
+#CHO only
+merge <- grid.arrange(p4,
+             p2, 
+             ncol = 2)
+ggsave( "../../Figures/traditional/Figure 2bottomBMDC.png", plot = merge, width = 6, height=3)
+```
